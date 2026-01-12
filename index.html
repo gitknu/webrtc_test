@@ -63,7 +63,9 @@
         #page-indicator { font-family: monospace; font-size: 1.2em; }
         
         /* Loading Status */
-        #status-text { margin-top: 10px; font-weight: bold; color: var(--primary); }
+        #status-text { margin-top: 10px; font-weight: bold; color: var(--primary); font-size: 1.1em; }
+        #progress-bar-container { width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin-top: 10px; display: none; }
+        #progress-bar-fill { height: 100%; background: var(--success); width: 0%; border-radius: 5px; transition: width 0.1s; }
     </style>
 </head>
 <body>
@@ -112,6 +114,11 @@
         <div id="loading-menu" class="card hidden" style="display:none;">
             <h3>Connecting...</h3>
             <p id="loading-msg">Finding Leader...</p>
+            
+            <!-- Progress Bar -->
+            <div id="progress-bar-container">
+                <div id="progress-bar-fill"></div>
+            </div>
             <div id="status-text"></div>
         </div>
     </div>
@@ -131,6 +138,7 @@
     <script>
         // --- CONFIGURATION ---
         const DEFAULT_PDF_URL = 'slides.pdf'; 
+        const CHUNK_SIZE = 16 * 1024; // 16KB chunks to prevent congestion
         
         // --- GLOBAL VARIABLES ---
         let pdfDoc = null;
@@ -148,7 +156,14 @@
 
         // Custom File State
         let presentationMode = 'default'; // 'default' or 'custom'
-        let customPdfBuffer = null; // ArrayBuffer for custom file
+        let customPdfBuffer = null; 
+
+        // Receiver State
+        let incomingFile = {
+            buffer: null,
+            receivedBytes: 0,
+            totalBytes: 0
+        };
 
         // --- PDF.js SETUP ---
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -164,31 +179,22 @@
                 document.getElementById('loading-menu').style.display = 'block';
                 document.getElementById('loading-menu').classList.remove('hidden');
                 document.getElementById('join-input').value = hostId;
-                
-                // Note: We don't load PDF yet, we wait for handshake to tell us which PDF to use
                 joinAsLooker(hostId);
-            } else {
-                // Pre-load default just in case, but don't render yet
-                // (Optional optimization, skipped to keep logic clean)
             }
         };
 
         // --- PDF FUNCTIONS ---
-        
-        /**
-         * Loads PDF. 
-         * @param {string|ArrayBuffer} source - URL string or ArrayBuffer data
-         */
         async function loadPdf(source) {
             try {
-                // PDF.js handles both URL string and TypedArrays/ArrayBuffers automatically
                 document.getElementById('loading-msg').textContent = "Rendering PDF...";
-                pdfDoc = await pdfjsLib.getDocument(source).promise;
+                document.getElementById('progress-bar-container').style.display = 'none';
+                document.getElementById('status-text').textContent = "";
                 
+                pdfDoc = await pdfjsLib.getDocument(source).promise;
                 updatePageCount();
                 renderPage(pageNum);
                 
-                // If we are viewer, hide menu once loaded
+                // If viewer, hide menu
                 if(!isLeader && document.getElementById('loading-menu').style.display !== 'none'){
                     closeMenu();
                 }
@@ -243,15 +249,13 @@
             }
         }
 
-        // --- FILE UPLOAD HANDLING ---
         function handleFileSelect(input) {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
                 document.getElementById('file-name').innerText = "Selected: " + file.name;
-                
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    customPdfBuffer = e.target.result; // ArrayBuffer
+                    customPdfBuffer = e.target.result;
                     startLeader('custom');
                 };
                 reader.readAsArrayBuffer(file);
@@ -265,7 +269,6 @@
             presentationMode = mode;
             isLeader = true;
             
-            // Load PDF locally for leader
             if(mode === 'default') {
                 loadPdf(DEFAULT_PDF_URL);
             } else {
@@ -273,25 +276,20 @@
                 loadPdf(customPdfBuffer);
             }
 
-            // Init Peer
             peer = new Peer(); 
 
             peer.on('open', function(id) {
-                // UI Updates
                 document.getElementById('start-menu').style.display = 'none';
                 document.getElementById('leader-menu').style.display = 'block';
                 document.getElementById('leader-menu').classList.remove('hidden');
                 document.getElementById('leader-controls').style.display = 'flex';
                 document.getElementById('mode-display').innerText = 
-                    mode === 'default' ? "Mode: Default File (Fast)" : "Mode: Custom File (P2P Transfer)";
+                    mode === 'default' ? "Mode: Default File (Fast)" : "Mode: Custom File (Syncing needed)";
 
                 const shareUrl = window.location.href.split('?')[0] + '?host=' + id;
                 document.getElementById('share-link').value = shareUrl;
-
                 document.getElementById('qr-container').innerHTML = ""; 
-                new QRCode(document.getElementById("qr-container"), {
-                    text: shareUrl, width: 180, height: 180
-                });
+                new QRCode(document.getElementById("qr-container"), { text: shareUrl, width: 180, height: 180 });
             });
 
             peer.on('connection', function(c) {
@@ -299,17 +297,16 @@
                 document.getElementById('connection-count').innerText = `${connections.length} connected`;
                 
                 c.on('open', () => {
-                    // 1. Send Handshake: Tell viewer what mode we are in
+                    // Send Handshake
                     c.send({ type: 'INIT', mode: presentationMode });
 
-                    // 2. If Custom, send the binary data
+                    // Transfer file if custom
                     if (presentationMode === 'custom' && customPdfBuffer) {
-                        // PeerJS handles ArrayBuffer serialization automatically
-                        c.send({ type: 'FILE_DATA', data: customPdfBuffer });
+                        sendFileChunked(c, customPdfBuffer);
+                    } else {
+                        // Just sync page if default
+                        c.send({ type: 'PAGE', value: pageNum });
                     }
-
-                    // 3. Send current page to sync them up
-                    c.send({ type: 'PAGE', value: pageNum });
                 });
                 
                 c.on('close', () => {
@@ -317,6 +314,40 @@
                     document.getElementById('connection-count').innerText = `${connections.length} connected`;
                 });
             });
+        }
+
+        // HELPER: Send file in chunks to avoid freezing and allow progress tracking
+        function sendFileChunked(connection, buffer) {
+            // 1. Send Header
+            connection.send({ type: 'FILE_HEADER', size: buffer.byteLength });
+
+            // 2. Send Chunks
+            let offset = 0;
+            const total = buffer.byteLength;
+
+            function sendNextChunk() {
+                if (offset < total) {
+                    const end = Math.min(offset + CHUNK_SIZE, total);
+                    const chunk = buffer.slice(offset, end);
+                    
+                    connection.send({ 
+                        type: 'FILE_CHUNK', 
+                        data: chunk, 
+                        offset: offset 
+                    });
+                    
+                    offset = end;
+                    
+                    // Small timeout to prevent flooding the data channel
+                    if (connection.open) setTimeout(sendNextChunk, 5); 
+                } else {
+                    // 3. Send End
+                    connection.send({ type: 'FILE_END' });
+                    // Sync current page after file is sent
+                    connection.send({ type: 'PAGE', value: pageNum });
+                }
+            }
+            sendNextChunk();
         }
 
         // 2. LOOKER LOGIC
@@ -334,35 +365,49 @@
                 conn = peer.connect(hostId);
 
                 conn.on('open', function() {
-                    document.getElementById('loading-msg').textContent = "Connected! Waiting for presentation data...";
+                    document.getElementById('loading-msg').textContent = "Connected! Waiting for host...";
                 });
 
                 conn.on('data', function(data) {
-                    // HANDSHAKE
+                    // --- HANDSHAKE ---
                     if (data.type === 'INIT') {
                         if (data.mode === 'default') {
                             document.getElementById('loading-msg').textContent = "Loading Default PDF...";
                             loadPdf(DEFAULT_PDF_URL);
                         } else {
-                            document.getElementById('loading-msg').textContent = "Downloading Custom PDF from Host...";
-                            document.getElementById('status-text').textContent = "This may take a moment depending on file size...";
+                            document.getElementById('loading-msg').textContent = "Downloading Custom PDF...";
+                            document.getElementById('progress-bar-container').style.display = 'block';
                         }
                     }
                     
-                    // FILE TRANSFER
-                    if (data.type === 'FILE_DATA') {
-                        document.getElementById('loading-msg').textContent = "Processing PDF...";
-                        document.getElementById('status-text').textContent = "";
-                        loadPdf(data.data); // Load from ArrayBuffer
+                    // --- FILE TRANSFER ---
+                    if (data.type === 'FILE_HEADER') {
+                        incomingFile.totalBytes = data.size;
+                        incomingFile.receivedBytes = 0;
+                        incomingFile.buffer = new Uint8Array(data.size);
+                        updateProgress(0);
                     }
 
-                    // SYNC PAGE
+                    if (data.type === 'FILE_CHUNK') {
+                        const chunkData = new Uint8Array(data.data);
+                        incomingFile.buffer.set(chunkData, data.offset);
+                        incomingFile.receivedBytes += chunkData.length;
+                        
+                        const pct = Math.round((incomingFile.receivedBytes / incomingFile.totalBytes) * 100);
+                        updateProgress(pct);
+                    }
+
+                    if (data.type === 'FILE_END') {
+                        updateProgress(100);
+                        document.getElementById('loading-msg').textContent = "Processing...";
+                        // Reconstruct ArrayBuffer
+                        loadPdf(incomingFile.buffer.buffer); 
+                    }
+
+                    // --- SYNC ---
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
-                        // Only render if doc is already loaded
-                        if(pdfDoc) {
-                            queueRenderPage(pageNum);
-                        }
+                        if(pdfDoc) queueRenderPage(pageNum);
                     }
                 });
                 
@@ -372,6 +417,11 @@
         }
 
         // --- UI HELPERS ---
+        function updateProgress(percent) {
+            document.getElementById('progress-bar-fill').style.width = percent + '%';
+            document.getElementById('status-text').textContent = percent + '%';
+        }
+
         function copyLink() {
             const copyText = document.getElementById("share-link");
             copyText.select();
