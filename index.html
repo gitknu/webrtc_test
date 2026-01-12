@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        :root { --primary: #2196F3; --dark: #333; --light: #f4f4f4; }
+        :root { --primary: #2196F3; --dark: #333; --light: #f4f4f4; --success: #4CAF50; --warning: #FF9800; }
         body { font-family: sans-serif; margin: 0; background: var(--dark); color: white; overflow: hidden; }
         
         /* UI OVERLAYS */
@@ -34,10 +34,14 @@
         /* BUTTONS & INPUTS */
         button {
             background: var(--primary); color: white; border: none; padding: 12px 20px;
-            font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; width: 100%;
+            font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px 0; width: 100%;
         }
-        button:hover { background: #1976D2; }
-        input { padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button:hover { filter: brightness(0.9); }
+        button.secondary { background: #555; }
+        button.upload-btn { background: var(--warning); }
+        
+        input[type="text"] { padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        input[type="file"] { display: none; }
         
         /* QR CODE AREA */
         #qr-container { margin: 20px auto; display: flex; justify-content: center; }
@@ -55,8 +59,11 @@
             background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 30px;
             display: flex; gap: 15px; align-items: center; z-index: 50;
         }
-        .control-btn { background: transparent; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-weight: bold; }
+        .control-btn { background: transparent; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-weight: bold; margin: 0; }
         #page-indicator { font-family: monospace; font-size: 1.2em; }
+        
+        /* Loading Status */
+        #status-text { margin-top: 10px; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
@@ -67,30 +74,45 @@
         <!-- INITIAL MENU -->
         <div id="start-menu" class="card">
             <h2>PDF Presenter</h2>
-            <p>Are you presenting or watching?</p>
-            <button onclick="startAsLeader()">I am the Leader (Present)</button>
-            <div style="margin: 15px 0; font-size: 0.8em; color: #666;">- OR -</div>
-            <input type="text" id="join-input" placeholder="Paste ID here...">
-            <button onclick="joinAsLooker()" style="background: #4CAF50;">Join Presentation</button>
+            
+            <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+                <p><strong>Presenting?</strong></p>
+                <!-- Default Option -->
+                <button onclick="startLeader('default')">Use Default PDF</button>
+                
+                <!-- Custom Option -->
+                <div style="font-size: 0.8em; color: #666; margin: 5px 0;">- OR -</div>
+                <button class="upload-btn" onclick="document.getElementById('file-upload').click()">Upload Custom PDF</button>
+                <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
+                <div id="file-name" style="font-size: 0.8em; color: #333; margin-top: 5px;"></div>
+            </div>
+
+            <div>
+                <p><strong>Watching?</strong></p>
+                <input type="text" id="join-input" placeholder="Paste ID here...">
+                <button onclick="joinAsLooker()" style="background: var(--success);">Join Presentation</button>
+            </div>
         </div>
 
         <!-- LEADER WAITING SCREEN -->
         <div id="leader-menu" class="card hidden" style="display:none;">
             <h3>Ready to Present!</h3>
+            <p id="mode-display" style="font-size:0.8em; color: #666;"></p>
             <p style="font-size:0.9em; color:#666;">Share this QR or Link with others:</p>
             
             <div id="qr-container"></div>
             
             <input type="text" id="share-link" readonly onclick="this.select()">
             <button onclick="copyLink()">Copy Link</button>
-            <button onclick="closeMenu()" style="background: #333;">Start Presenting</button>
+            <button onclick="closeMenu()" class="secondary">Start Presenting</button>
             <div id="connection-count" style="margin-top:10px; font-size:0.8em; color:green;">0 connected</div>
         </div>
 
         <!-- LOADING SCREEN -->
         <div id="loading-menu" class="card hidden" style="display:none;">
             <h3>Connecting...</h3>
-            <p>Loading PDF and finding Leader...</p>
+            <p id="loading-msg">Finding Leader...</p>
+            <div id="status-text"></div>
         </div>
     </div>
 
@@ -108,14 +130,14 @@
 
     <script>
         // --- CONFIGURATION ---
-        const PDF_URL = 'slides.pdf'; 
+        const DEFAULT_PDF_URL = 'slides.pdf'; 
         
         // --- GLOBAL VARIABLES ---
         let pdfDoc = null;
         let pageNum = 1;
         let pageRendering = false;
         let pageNumPending = null;
-        let scale = 1.5; // Adjust zoom level here
+        let scale = 1.5; 
         const canvas = document.getElementById('the-canvas');
         const ctx = canvas.getContext('2d');
         
@@ -124,12 +146,15 @@
         let connections = [];
         let isLeader = false;
 
+        // Custom File State
+        let presentationMode = 'default'; // 'default' or 'custom'
+        let customPdfBuffer = null; // ArrayBuffer for custom file
+
         // --- PDF.js SETUP ---
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         // --- INITIALIZATION ---
         window.onload = () => {
-            // Check URL for "?host=XYZ"
             const urlParams = new URLSearchParams(window.location.search);
             const hostId = urlParams.get('host');
 
@@ -140,35 +165,46 @@
                 document.getElementById('loading-menu').classList.remove('hidden');
                 document.getElementById('join-input').value = hostId;
                 
-                // Load PDF then connect
-                loadPdf().then(() => {
-                    joinAsLooker(hostId);
-                });
+                // Note: We don't load PDF yet, we wait for handshake to tell us which PDF to use
+                joinAsLooker(hostId);
             } else {
-                // Just load PDF in background so it's ready
-                loadPdf();
+                // Pre-load default just in case, but don't render yet
+                // (Optional optimization, skipped to keep logic clean)
             }
         };
 
         // --- PDF FUNCTIONS ---
-        async function loadPdf() {
+        
+        /**
+         * Loads PDF. 
+         * @param {string|ArrayBuffer} source - URL string or ArrayBuffer data
+         */
+        async function loadPdf(source) {
             try {
-                pdfDoc = await pdfjsLib.getDocument(PDF_URL).promise;
+                // PDF.js handles both URL string and TypedArrays/ArrayBuffers automatically
+                document.getElementById('loading-msg').textContent = "Rendering PDF...";
+                pdfDoc = await pdfjsLib.getDocument(source).promise;
+                
                 updatePageCount();
                 renderPage(pageNum);
+                
+                // If we are viewer, hide menu once loaded
+                if(!isLeader && document.getElementById('loading-menu').style.display !== 'none'){
+                    closeMenu();
+                }
             } catch (err) {
-                alert("Could not load 'slides.pdf'. Make sure it exists in the repo!");
+                console.error(err);
+                alert("Could not load PDF. " + err.message);
+                document.getElementById('loading-msg').textContent = "Error loading PDF";
             }
         }
 
         function renderPage(num) {
             pageRendering = true;
             pdfDoc.getPage(num).then(function(page) {
-                // Adjust scale to fit width if on mobile
                 const containerWidth = document.getElementById('pdf-container').clientWidth;
                 const unscaledViewport = page.getViewport({scale: 1});
                 const fitScale = (containerWidth * 0.95) / unscaledViewport.width;
-                // Use the smaller of default scale vs fit scale
                 const finalScale = Math.min(scale, fitScale);
 
                 const viewport = page.getViewport({scale: finalScale});
@@ -207,30 +243,54 @@
             }
         }
 
+        // --- FILE UPLOAD HANDLING ---
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                document.getElementById('file-name').innerText = "Selected: " + file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    customPdfBuffer = e.target.result; // ArrayBuffer
+                    startLeader('custom');
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
         // --- PEERJS / NETWORKING ---
 
         // 1. LEADER LOGIC
-        function startAsLeader() {
+        function startLeader(mode) {
+            presentationMode = mode;
             isLeader = true;
-            peer = new Peer(); // Generate random ID
+            
+            // Load PDF locally for leader
+            if(mode === 'default') {
+                loadPdf(DEFAULT_PDF_URL);
+            } else {
+                if(!customPdfBuffer) return alert("No file selected!");
+                loadPdf(customPdfBuffer);
+            }
+
+            // Init Peer
+            peer = new Peer(); 
 
             peer.on('open', function(id) {
-                // Show Leader Menu
+                // UI Updates
                 document.getElementById('start-menu').style.display = 'none';
                 document.getElementById('leader-menu').style.display = 'block';
                 document.getElementById('leader-menu').classList.remove('hidden');
                 document.getElementById('leader-controls').style.display = 'flex';
+                document.getElementById('mode-display').innerText = 
+                    mode === 'default' ? "Mode: Default File (Fast)" : "Mode: Custom File (P2P Transfer)";
 
-                // Generate Share Link
                 const shareUrl = window.location.href.split('?')[0] + '?host=' + id;
                 document.getElementById('share-link').value = shareUrl;
 
-                // Generate QR Code
-                document.getElementById('qr-container').innerHTML = ""; // clear
+                document.getElementById('qr-container').innerHTML = ""; 
                 new QRCode(document.getElementById("qr-container"), {
-                    text: shareUrl,
-                    width: 180,
-                    height: 180
+                    text: shareUrl, width: 180, height: 180
                 });
             });
 
@@ -238,9 +298,23 @@
                 connections.push(c);
                 document.getElementById('connection-count').innerText = `${connections.length} connected`;
                 
-                // Sync new user immediately
                 c.on('open', () => {
+                    // 1. Send Handshake: Tell viewer what mode we are in
+                    c.send({ type: 'INIT', mode: presentationMode });
+
+                    // 2. If Custom, send the binary data
+                    if (presentationMode === 'custom' && customPdfBuffer) {
+                        // PeerJS handles ArrayBuffer serialization automatically
+                        c.send({ type: 'FILE_DATA', data: customPdfBuffer });
+                    }
+
+                    // 3. Send current page to sync them up
                     c.send({ type: 'PAGE', value: pageNum });
+                });
+                
+                c.on('close', () => {
+                    connections = connections.filter(conn => conn !== c);
+                    document.getElementById('connection-count').innerText = `${connections.length} connected`;
                 });
             });
         }
@@ -260,19 +334,40 @@
                 conn = peer.connect(hostId);
 
                 conn.on('open', function() {
-                    // Connected successfully
-                    document.getElementById('ui-layer').classList.add('hidden'); // Hide menu
+                    document.getElementById('loading-msg').textContent = "Connected! Waiting for presentation data...";
                 });
 
                 conn.on('data', function(data) {
+                    // HANDSHAKE
+                    if (data.type === 'INIT') {
+                        if (data.mode === 'default') {
+                            document.getElementById('loading-msg').textContent = "Loading Default PDF...";
+                            loadPdf(DEFAULT_PDF_URL);
+                        } else {
+                            document.getElementById('loading-msg').textContent = "Downloading Custom PDF from Host...";
+                            document.getElementById('status-text').textContent = "This may take a moment depending on file size...";
+                        }
+                    }
+                    
+                    // FILE TRANSFER
+                    if (data.type === 'FILE_DATA') {
+                        document.getElementById('loading-msg').textContent = "Processing PDF...";
+                        document.getElementById('status-text').textContent = "";
+                        loadPdf(data.data); // Load from ArrayBuffer
+                    }
+
+                    // SYNC PAGE
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
-                        queueRenderPage(pageNum);
+                        // Only render if doc is already loaded
+                        if(pdfDoc) {
+                            queueRenderPage(pageNum);
+                        }
                     }
                 });
                 
-                // If connection fails/closes
                 conn.on('close', () => alert("Leader disconnected"));
+                peer.on('error', (err) => alert("Connection Error: " + err));
             });
         }
 
@@ -286,6 +381,9 @@
 
         function closeMenu() {
             document.getElementById('ui-layer').classList.add('hidden');
+            setTimeout(() => {
+                 document.getElementById('ui-layer').style.display = 'none';
+            }, 500);
         }
 
         function broadcast(data) {
