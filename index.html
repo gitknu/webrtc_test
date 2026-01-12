@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Serverless PDF Sync</title>
+    
+    <!-- LIBRARIES -->
+    <!-- 1. PeerJS for Networking -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- 2. PDF.js for Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- 3. QRCode.js for generating QR Codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root { --primary: #2196F3; --dark: #333; --light: #f4f4f4; }
+        body { font-family: sans-serif; margin: 0; background: var(--dark); color: white; overflow: hidden; }
+        
+        /* UI OVERLAYS */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s;
+        }
+        .card {
+            background: white; color: black; padding: 20px; border-radius: 10px;
+            text-align: center; max-width: 400px; width: 90%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .hidden { opacity: 0; pointer-events: none; }
+        
+        /* BUTTONS & INPUTS */
+        button {
+            background: var(--primary); color: white; border: none; padding: 12px 20px;
+            font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; width: 100%;
+        }
+        button:hover { background: #1976D2; }
+        input { padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        
+        /* QR CODE AREA */
+        #qr-container { margin: 20px auto; display: flex; justify-content: center; }
+        
+        /* PDF VIEWER */
+        #pdf-container { 
+            width: 100vw; height: 100vh; overflow: auto; 
+            display: flex; justify-content: center; background: #555;
+        }
+        canvas { display: block; margin: 10px auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+
+        /* FLOATING CONTROLS (Only for Leader) */
+        #leader-controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 30px;
+            display: flex; gap: 15px; align-items: center; z-index: 50;
+        }
+        .control-btn { background: transparent; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-weight: bold; }
+        #page-indicator { font-family: monospace; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. SETUP SCREEN (The Menu) -->
+    <div id="ui-layer">
+        
+        <!-- INITIAL MENU -->
+        <div id="start-menu" class="card">
+            <h2>PDF Presenter</h2>
+            <p>Are you presenting or watching?</p>
+            <button onclick="startAsLeader()">I am the Leader (Present)</button>
+            <div style="margin: 15px 0; font-size: 0.8em; color: #666;">- OR -</div>
+            <input type="text" id="join-input" placeholder="Paste ID here...">
+            <button onclick="joinAsLooker()" style="background: #4CAF50;">Join Presentation</button>
+        </div>
+
+        <!-- LEADER WAITING SCREEN -->
+        <div id="leader-menu" class="card hidden" style="display:none;">
+            <h3>Ready to Present!</h3>
+            <p style="font-size:0.9em; color:#666;">Share this QR or Link with others:</p>
+            
+            <div id="qr-container"></div>
+            
+            <input type="text" id="share-link" readonly onclick="this.select()">
+            <button onclick="copyLink()">Copy Link</button>
+            <button onclick="closeMenu()" style="background: #333;">Start Presenting</button>
+            <div id="connection-count" style="margin-top:10px; font-size:0.8em; color:green;">0 connected</div>
+        </div>
+
+        <!-- LOADING SCREEN -->
+        <div id="loading-menu" class="card hidden" style="display:none;">
+            <h3>Connecting...</h3>
+            <p>Loading PDF and finding Leader...</p>
+        </div>
+    </div>
+
+    <!-- 2. MAIN PDF VIEWER -->
+    <div id="pdf-container">
+        <canvas id="the-canvas"></canvas>
+    </div>
+
+    <!-- 3. LEADER CONTROLS (Floating) -->
+    <div id="leader-controls" style="display:none;">
+        <button class="control-btn" onclick="changePage(-1)"><</button>
+        <span id="page-indicator">1 / ?</span>
+        <button class="control-btn" onclick="changePage(1)">></button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const PDF_URL = 'slides.pdf'; 
+        
+        // --- GLOBAL VARIABLES ---
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.5; // Adjust zoom level here
+        const canvas = document.getElementById('the-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let peer = null;
+        let conn = null;
+        let connections = [];
+        let isLeader = false;
+
+        // --- PDF.js SETUP ---
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            // Check URL for "?host=XYZ"
+            const urlParams = new URLSearchParams(window.location.search);
+            const hostId = urlParams.get('host');
+
+            if (hostId) {
+                // Auto-join mode
+                document.getElementById('start-menu').style.display = 'none';
+                document.getElementById('loading-menu').style.display = 'block';
+                document.getElementById('loading-menu').classList.remove('hidden');
+                document.getElementById('join-input').value = hostId;
+                
+                // Load PDF then connect
+                loadPdf().then(() => {
+                    joinAsLooker(hostId);
+                });
+            } else {
+                // Just load PDF in background so it's ready
+                loadPdf();
+            }
+        };
+
+        // --- PDF FUNCTIONS ---
+        async function loadPdf() {
+            try {
+                pdfDoc = await pdfjsLib.getDocument(PDF_URL).promise;
+                updatePageCount();
+                renderPage(pageNum);
+            } catch (err) {
+                alert("Could not load 'slides.pdf'. Make sure it exists in the repo!");
+            }
+        }
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                // Adjust scale to fit width if on mobile
+                const containerWidth = document.getElementById('pdf-container').clientWidth;
+                const unscaledViewport = page.getViewport({scale: 1});
+                const fitScale = (containerWidth * 0.95) / unscaledViewport.width;
+                // Use the smaller of default scale vs fit scale
+                const finalScale = Math.min(scale, fitScale);
+
+                const viewport = page.getViewport({scale: finalScale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = { canvasContext: ctx, viewport: viewport };
+                const renderTask = page.render(renderContext);
+
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+            updatePageCount();
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) { pageNumPending = num; } else { renderPage(num); }
+        }
+
+        function updatePageCount() {
+            if(pdfDoc) document.getElementById('page-indicator').textContent = `${pageNum} / ${pdfDoc.numPages}`;
+        }
+
+        function changePage(offset) {
+            if(!pdfDoc) return;
+            const newPage = pageNum + offset;
+            if (newPage >= 1 && newPage <= pdfDoc.numPages) {
+                pageNum = newPage;
+                queueRenderPage(pageNum);
+                if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
+            }
+        }
+
+        // --- PEERJS / NETWORKING ---
+
+        // 1. LEADER LOGIC
+        function startAsLeader() {
+            isLeader = true;
+            peer = new Peer(); // Generate random ID
+
+            peer.on('open', function(id) {
+                // Show Leader Menu
+                document.getElementById('start-menu').style.display = 'none';
+                document.getElementById('leader-menu').style.display = 'block';
+                document.getElementById('leader-menu').classList.remove('hidden');
+                document.getElementById('leader-controls').style.display = 'flex';
+
+                // Generate Share Link
+                const shareUrl = window.location.href.split('?')[0] + '?host=' + id;
+                document.getElementById('share-link').value = shareUrl;
+
+                // Generate QR Code
+                document.getElementById('qr-container').innerHTML = ""; // clear
+                new QRCode(document.getElementById("qr-container"), {
+                    text: shareUrl,
+                    width: 180,
+                    height: 180
+                });
+            });
+
+            peer.on('connection', function(c) {
+                connections.push(c);
+                document.getElementById('connection-count').innerText = `${connections.length} connected`;
+                
+                // Sync new user immediately
+                c.on('open', () => {
+                    c.send({ type: 'PAGE', value: pageNum });
+                });
+            });
+        }
+
+        // 2. LOOKER LOGIC
+        function joinAsLooker(manualId = null) {
+            const hostId = manualId || document.getElementById('join-input').value;
+            if(!hostId) return alert("Please enter an ID");
+
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('loading-menu').style.display = 'block';
+            document.getElementById('loading-menu').classList.remove('hidden');
+
+            peer = new Peer();
+
+            peer.on('open', function() {
+                conn = peer.connect(hostId);
+
+                conn.on('open', function() {
+                    // Connected successfully
+                    document.getElementById('ui-layer').classList.add('hidden'); // Hide menu
+                });
+
+                conn.on('data', function(data) {
+                    if (data.type === 'PAGE') {
+                        pageNum = data.value;
+                        queueRenderPage(pageNum);
+                    }
+                });
+                
+                // If connection fails/closes
+                conn.on('close', () => alert("Leader disconnected"));
+            });
+        }
+
+        // --- UI HELPERS ---
+        function copyLink() {
+            const copyText = document.getElementById("share-link");
+            copyText.select();
+            document.execCommand("copy");
+            alert("Link copied!");
+        }
+
+        function closeMenu() {
+            document.getElementById('ui-layer').classList.add('hidden');
+        }
+
+        function broadcast(data) {
+            connections.forEach(c => { if(c.open) c.send(data); });
+        }
+    </script>
+</body>
+</html>
