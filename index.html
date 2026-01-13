@@ -33,7 +33,7 @@
             color: var(--text-color);
         }
 
-        /* --- UI OVERLAYS (Start Menu / Lobby) --- */
+        /* --- UI OVERLAYS --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.92); z-index: 200;
@@ -90,11 +90,10 @@
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
-            padding: 20px 10px 90px 10px; /* Bottom padding for toolbar */
+            padding: 20px 10px 90px 10px;
             position: relative;
         }
 
-        /* Canvas Wrapper to hold PDF + Draw Layer together */
         .canvas-wrapper {
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
@@ -105,23 +104,23 @@
             max-width: 100%; height: auto;
         }
 
-        /* The transparent drawing layer */
+        /* Drawing Layer */
         canvas#draw-canvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-            touch-action: none; /* Prevents scrolling while drawing */
+            touch-action: none; /* Critical for precise touch drawing */
             cursor: crosshair;
-            pointer-events: none; /* Default: click-through. Leader enables this. */
+            pointer-events: none; 
         }
 
-        /* Invisible Touch Zones (Navigation) */
+        /* Navigation Zones */
         .touch-zone {
             position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10;
         }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        /* QR Button (Top Right) */
+        /* QR Button */
         #qr-btn {
             position: fixed; top: 20px; right: 20px;
             background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
@@ -130,7 +129,7 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* QR Modal (In-game) */
+        /* QR Modal */
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 300;
@@ -139,7 +138,7 @@
         }
         #qr-code-box { background: white; padding: 20px; border-radius: 15px; }
 
-        /* Bottom Toolbar */
+        /* Toolbar */
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
             background-color: var(--bar-color);
@@ -162,20 +161,16 @@
         .tool-btn:active { background-color: rgba(255,255,255,0.1); }
         .tool-btn span { font-size: 10px; opacity: 0.8; margin-top: 2px; }
         .tool-btn:disabled { opacity: 0.3; }
-        
         .tool-btn.danger { color: #ff6b6b; }
 
     </style>
 </head>
 <body>
 
-    <!-- 1. UI LAYER (Start / Lobby / Loading) -->
+    <!-- UI LAYER -->
     <div id="ui-layer">
-        
-        <!-- Start Menu -->
         <div id="start-menu" class="card">
             <h2>PDF Sync</h2>
-            
             <div style="border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 15px;">
                 <p style="opacity: 0.8; margin-bottom: 10px;">I am Presenting</p>
                 <button class="menu-btn secondary" onclick="initLeader('default')">Use Demo PDF</button>
@@ -183,7 +178,6 @@
                 <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
                 <div id="file-name" style="font-size: 0.8em; color: var(--accent-color); margin-top: 5px;"></div>
             </div>
-
             <div>
                 <p style="opacity: 0.8; margin-bottom: 10px;">I am Watching</p>
                 <input type="text" id="join-input" placeholder="Enter Host ID...">
@@ -191,56 +185,36 @@
             </div>
         </div>
 
-        <!-- Leader Lobby -->
         <div id="leader-menu" class="card hidden">
             <h3>Lobby</h3>
             <div id="qr-container" style="background:white; padding:10px; border-radius:10px; display:inline-block; margin:10px 0;"></div>
-            
             <input type="text" id="share-link" readonly onclick="this.select()" style="text-align:center; font-family:monospace;">
             <button class="menu-btn secondary" onclick="copyLink()" style="margin-bottom: 15px;">Copy Link</button>
-            
-            <div id="client-list">
-                <div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div>
-            </div>
-
+            <div id="client-list"><div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div></div>
             <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn success" disabled>Start Presentation</button>
-            
-            <div id="sync-status" style="display:none; color: var(--accent-color); font-weight:bold; margin-top:10px;">
-                Sending file...
-            </div>
+            <div id="sync-status" style="display:none; color: var(--accent-color); font-weight:bold; margin-top:10px;">Sending file...</div>
         </div>
 
-        <!-- Viewer Loading -->
         <div id="loading-menu" class="card hidden">
             <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
             <h3 id="loading-msg" style="margin: 15px 0;">Connecting...</h3>
-            <div id="progress-bar-container" style="display:none;">
-                <div id="progress-bar-fill"></div>
-            </div>
+            <div id="progress-bar-container" style="display:none;"><div id="progress-bar-fill"></div></div>
             <div id="status-text" style="font-size:0.8em; margin-top:5px; opacity:0.7;"></div>
         </div>
     </div>
 
-    <!-- 2. MAIN VIEWER -->
-    
-    <!-- QR Modal (Toggleable) -->
+    <!-- VIEWER & QR -->
     <div id="qr-modal" onclick="toggleQR()">
-        <div id="qr-code-box" onclick="event.stopPropagation()">
-            <div id="qrcode-modal-tgt"></div>
-        </div>
+        <div id="qr-code-box" onclick="event.stopPropagation()"><div id="qrcode-modal-tgt"></div></div>
         <button class="menu-btn secondary" style="width:auto; margin-top:20px;" onclick="toggleQR()">Close</button>
     </div>
+    <button id="qr-btn" onclick="toggleQR()" class="hidden"><i data-lucide="qr-code"></i></button>
 
-    <!-- Floating QR Button -->
-    <button id="qr-btn" onclick="toggleQR()" class="hidden" id="float-qr">
-        <i data-lucide="qr-code"></i>
-    </button>
-
-    <!-- Invisible Click Zones -->
+    <!-- TOUCH ZONES -->
     <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
     <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
-    <!-- PDF & Drawing Container -->
+    <!-- CANVAS WRAPPER -->
     <div id="pdf-container">
         <div class="canvas-wrapper">
             <canvas id="the-canvas"></canvas>
@@ -248,28 +222,21 @@
         </div>
     </div>
 
-    <!-- Bottom Toolbar -->
+    <!-- TOOLBAR -->
     <div id="toolbar">
         <button class="tool-btn" id="prev" onclick="onPrevPage()">
             <i data-lucide="arrow-left" width="24" height="24"></i>
             <span>Prev</span>
         </button>
-
-        <!-- New Eraser Button (Only works for Leader, clears view for everyone) -->
-        <button class="tool-btn danger" id="eraser-btn" onclick="clearDrawings(true)" style="display:none;">
+        <button class="tool-btn danger" id="eraser-btn" onclick="triggerClear()" style="display:none;">
             <i data-lucide="eraser" width="24" height="24"></i>
             <span>Clear</span>
         </button>
-
-        <div id="page-info">
-            <span id="page_num">--</span> / <span id="page_count">--</span>
-        </div>
-
+        <div id="page-info"><span id="page_num">--</span> / <span id="page_count">--</span></div>
         <button class="tool-btn" id="rotate" onclick="onRotate()">
             <i data-lucide="rotate-cw" width="24" height="24"></i>
             <span>Rotate</span>
         </button>
-
         <button class="tool-btn" id="next" onclick="onNextPage()">
             <i data-lucide="arrow-right" width="24" height="24"></i>
             <span>Next</span>
@@ -277,43 +244,42 @@
     </div>
 
     <script>
-        // --- CONFIG & GLOBALS ---
+        // --- GLOBALS ---
         const DEFAULT_PDF_URL = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf';
         const CHUNK_SIZE = 16 * 1024;
         
-        // Viewer State
+        // Viewer
         let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
         let rotation = 0;
         
-        // Canvas Refs
+        // Canvas
         const pdfCanvas = document.getElementById('the-canvas');
         const pdfCtx = pdfCanvas.getContext('2d');
         const drawCanvas = document.getElementById('draw-canvas');
         const drawCtx = drawCanvas.getContext('2d');
         const container = document.getElementById('pdf-container');
         
-        // Network State
+        // Network
         let peer = null;
         let connections = []; 
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
         
-        // Incoming File State
+        // Download
         let incomingChunks = []; 
         let incomingSize = 0;
         let totalExpectedSize = 0;
 
-        // Drawing State
+        // DRAWING & MEMORY
         let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        let lastX = 0, lastY = 0;
+        let pageDrawings = {}; // { pageNum: [ {x0,y0,x1,y1}, ... ] }
 
-        // Init Libraries
+        // Setup
         lucide.createIcons();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // Auto-join Check
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             if (params.get('host')) {
@@ -329,8 +295,7 @@
             const containerWidth = container.clientWidth - 20; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
             const ratio = containerWidth / viewport.width;
-            const pixelRatio = window.devicePixelRatio || 1;
-            return ratio * pixelRatio;
+            return ratio * (window.devicePixelRatio || 1);
         }
 
         async function renderPdf(source) {
@@ -353,25 +318,22 @@
                 const displayScale = getOptimalScale(page);
                 const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
                 
-                // Resize PDF Canvas
-                pdfCanvas.height = viewport.height;
-                pdfCanvas.width = viewport.width;
+                // Resize both canvases
+                pdfCanvas.height = drawCanvas.height = viewport.height;
+                pdfCanvas.width = drawCanvas.width = viewport.width;
 
-                // Sync Drawing Canvas Size
-                drawCanvas.height = viewport.height;
-                drawCanvas.width = viewport.width;
-                
-                // Note: Page turn clears drawings automatically (new canvas size)
-                // But we explicitly reset style
+                // Reset drawing styles after resize
                 drawCtx.lineCap = 'round';
                 drawCtx.lineJoin = 'round';
                 drawCtx.lineWidth = 3;
                 drawCtx.strokeStyle = 'red';
 
-                const renderContext = { canvasContext: pdfCtx, viewport: viewport };
-                
-                page.render(renderContext).promise.then(() => {
+                // Render PDF
+                page.render({ canvasContext: pdfCtx, viewport: viewport }).promise.then(() => {
                     pageRendering = false;
+                    // Restore drawings for this page
+                    redrawCurrentPageStrokes();
+                    
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
@@ -379,7 +341,6 @@
                 });
             });
 
-            // Update UI
             document.getElementById('page_num').textContent = num;
             document.getElementById('prev').disabled = num <= 1;
             document.getElementById('next').disabled = num >= pdfDoc.numPages;
@@ -391,16 +352,16 @@
             else renderPage(num);
         }
 
-        // --- DRAWING LOGIC ---
+        // --- DRAWING LOGIC (WYSIWYG + MEMORY) ---
         
         function initDrawingListeners() {
-            // Mouse Events
+            // Mouse
             drawCanvas.addEventListener('mousedown', startDrawing);
             drawCanvas.addEventListener('mousemove', draw);
             drawCanvas.addEventListener('mouseup', stopDrawing);
             drawCanvas.addEventListener('mouseout', stopDrawing);
 
-            // Touch Events
+            // Touch
             drawCanvas.addEventListener('touchstart', (e) => {
                 if(e.touches.length === 1) { e.preventDefault(); startDrawing(e.touches[0]); }
             });
@@ -410,11 +371,19 @@
             drawCanvas.addEventListener('touchend', stopDrawing);
         }
 
+        // Updated for Precision (Canvas Resolution vs CSS Size)
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
+            const clientX = e.clientX; 
+            const clientY = e.clientY;
+
+            // Calculate scale ratio (Internal Pixels / CSS Pixels)
+            const scaleX = drawCanvas.width / rect.width;
+            const scaleY = drawCanvas.height / rect.height;
+
             return {
-                x: (e.clientX - rect.left),
-                y: (e.clientY - rect.top)
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
 
@@ -424,9 +393,7 @@
             const pos = getPos(e);
             lastX = pos.x;
             lastY = pos.y;
-            
-            // Draw a dot immediately
-            performDraw(lastX, lastY, lastX, lastY, true);
+            performDraw(lastX, lastY, lastX, lastY, true); // Draw Dot
         }
 
         function draw(e) {
@@ -437,32 +404,34 @@
             lastY = pos.y;
         }
 
-        function stopDrawing() {
-            isDrawing = false;
-        }
+        function stopDrawing() { isDrawing = false; }
 
-        // Core Drawing Function (Normalized for Sync)
         function performDraw(x0, y0, x1, y1, emit) {
             const w = drawCanvas.width;
             const h = drawCanvas.height;
 
-            // Draw Locally
+            // 1. Draw Locally
             drawCtx.beginPath();
             drawCtx.moveTo(x0, y0);
             drawCtx.lineTo(x1, y1);
             drawCtx.stroke();
 
-            // Broadcast Normalized Coordinates (0.0 - 1.0)
+            // 2. Save to Memory (Normalized 0-1)
+            const nCoords = { x0: x0/w, y0: y0/h, x1: x1/w, y1: y1/h };
+            if (!pageDrawings[pageNum]) pageDrawings[pageNum] = [];
+            pageDrawings[pageNum].push(nCoords);
+
+            // 3. Network Broadcast
             if (emit && isLeader) {
                 broadcast({
                     type: 'DRAW',
-                    coords: [x0 / w, y0 / h, x1 / w, y1 / h]
+                    coords: [nCoords.x0, nCoords.y0, nCoords.x1, nCoords.y1]
                 });
             }
         }
 
-        // Receive Drawing from Leader
-        function receiveDraw(nx0, ny0, nx1, ny1) {
+        // Used by Viewers (Receiving) and Leader (Restoring Memory)
+        function receiveDraw(nx0, ny0, nx1, ny1, saveToMem = true) {
             const w = drawCanvas.width;
             const h = drawCanvas.height;
             
@@ -470,29 +439,45 @@
             drawCtx.moveTo(nx0 * w, ny0 * h);
             drawCtx.lineTo(nx1 * w, ny1 * h);
             drawCtx.stroke();
-        }
 
-        function clearDrawings(emit) {
-            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            if (emit && isLeader) {
-                broadcast({ type: 'CLEAR' });
+            if (saveToMem) {
+                if (!pageDrawings[pageNum]) pageDrawings[pageNum] = [];
+                pageDrawings[pageNum].push({ x0: nx0, y0: ny0, x1: nx1, y1: ny1 });
             }
         }
 
-        // --- CONTROLS ---
+        function redrawCurrentPageStrokes() {
+            // Clear first
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            
+            // Replay memory for this page
+            const strokes = pageDrawings[pageNum];
+            if (strokes && strokes.length > 0) {
+                strokes.forEach(s => {
+                    receiveDraw(s.x0, s.y0, s.x1, s.y1, false); // false = don't duplicate memory
+                });
+            }
+        }
 
+        function triggerClear() {
+            // Delete memory for this page
+            delete pageDrawings[pageNum];
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            
+            if (isLeader) broadcast({ type: 'CLEAR' });
+        }
+
+        // --- NAVIGATION ---
         function onPrevPage() {
             if (!pdfDoc || pageNum <= 1) return;
             pageNum--;
-            clearDrawings(true); // New page = clean slate
-            queueRenderPage(pageNum);
+            queueRenderPage(pageNum); // Will redraw strokes automatically
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
 
         function onNextPage() {
             if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
             pageNum++;
-            clearDrawings(true); // New page = clean slate
             queueRenderPage(pageNum);
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
@@ -500,9 +485,7 @@
         function onRotate() {
             rotation += 90;
             if (rotation >= 360) rotation = 0;
-            // Clear drawings on rotate because coordinates mess up until redraw
-            clearDrawings(false); 
-            queueRenderPage(pageNum);
+            queueRenderPage(pageNum); // Redraws PDF + Strokes mapped to new dimensions
         }
 
         function toggleQR() {
@@ -510,22 +493,13 @@
             modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        // Resize Handler
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if(pdfDoc) {
-                    // Save drawings? It's complex to rescale bitmaps. 
-                    // Simple approach: Clear on resize for now.
-                    clearDrawings(false); 
-                    renderPage(pageNum);
-                }
-            }, 200);
+            resizeTimeout = setTimeout(() => { if(pdfDoc) renderPage(pageNum); }, 200);
         });
 
         // --- LEADER LOGIC ---
-
         function handleFileSelect(input) {
             if (input.files[0]) {
                 leaderPdfBlob = input.files[0];
@@ -536,12 +510,9 @@
 
         function initLeader(mode) {
             isLeader = true;
-            
-            // Enable Drawing Interaction
             drawCanvas.style.pointerEvents = 'auto';
-            document.getElementById('eraser-btn').style.display = 'flex'; // Show eraser
+            document.getElementById('eraser-btn').style.display = 'flex'; 
 
-            // Render locally first
             if (mode === 'default') renderPdf(DEFAULT_PDF_URL);
             else if (leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
             
@@ -555,7 +526,6 @@
                 new QRCode(document.getElementById("qr-container"), { text: url, width: 128, height: 128 });
                 new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 200, height: 200 });
                 document.getElementById('qr-btn').classList.remove('hidden');
-
                 document.getElementById('btn-start-sync').disabled = false;
             });
 
@@ -563,11 +533,8 @@
                 const client = { id: conn.peer, conn: conn, ready: false };
                 connections.push(client);
                 updateClientList();
-
-                if (transferInProgress) {
-                    conn.on('open', () => syncSingleClient(client));
-                }
-
+                if (transferInProgress) conn.on('open', () => syncSingleClient(client));
+                
                 conn.on('data', data => {
                     if (data.type === 'ACK_READY') {
                         client.ready = true;
@@ -575,7 +542,6 @@
                         checkGlobalSync();
                     }
                 });
-
                 conn.on('close', () => {
                     connections = connections.filter(c => c.conn !== conn);
                     updateClientList();
@@ -593,15 +559,10 @@
             list.innerHTML = connections.map(c => `
                 <div class="client-row">
                     <span>User ${c.id.substr(0,4)}</span>
-                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">
-                        ${c.ready ? 'Viewing' : 'Syncing'}
-                    </span>
+                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">${c.ready ? 'Viewing' : 'Syncing'}</span>
                 </div>
             `).join('');
-            
-            if(!transferInProgress) {
-                document.getElementById('btn-start-sync').innerText = `Start with ${connections.length} Viewer(s)`;
-            }
+            if(!transferInProgress) document.getElementById('btn-start-sync').innerText = `Start with ${connections.length} Viewer(s)`;
         }
 
         function startDistribution() {
@@ -615,38 +576,29 @@
         function syncSingleClient(client) {
             client.ready = false;
             updateClientList();
-            
             const mode = leaderPdfBlob ? 'custom' : 'default';
             client.conn.send({ type: 'INIT', mode: mode });
-
-            if (mode === 'custom') {
-                sendFileRaw(client.conn, leaderPdfBlob);
-            }
+            if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
         }
 
         function sendFileRaw(conn, blob) {
             conn.send({ type: 'FILE_HEADER', size: blob.size });
-
             let offset = 0;
             const reader = new FileReader();
-
             reader.onload = function(e) {
                 if (conn.dataChannel.bufferedAmount > 16 * 1024 * 1024) {
                     setTimeout(() => { conn.send(e.target.result); nextSlice(); }, 100);
                     return;
                 }
-                try { conn.send(e.target.result); } catch(err) { console.error(err); }
+                try { conn.send(e.target.result); } catch(err) {}
                 offset += e.target.result.byteLength;
                 nextSlice();
             };
-
             function nextSlice() {
                 if (offset < blob.size) {
                     if (conn.dataChannel.bufferedAmount > 64 * 1024) setTimeout(nextSlice, 10);
                     else reader.readAsArrayBuffer(blob.slice(offset, offset + CHUNK_SIZE));
-                } else {
-                    conn.send({ type: 'FILE_END' });
-                }
+                } else conn.send({ type: 'FILE_END' });
             }
             nextSlice();
         }
@@ -663,7 +615,6 @@
         }
 
         // --- VIEWER LOGIC ---
-
         function joinGame(id) {
             const hostId = id || document.getElementById('join-input').value;
             if (!hostId) return alert("ID Required");
@@ -674,13 +625,10 @@
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
-
-                conn.on('open', () => {
-                    document.getElementById('loading-msg').innerText = "Waiting for host...";
-                });
-
+                conn.on('open', () => document.getElementById('loading-msg').innerText = "Waiting for host...");
+                
                 conn.on('data', async data => {
-                    // 1. Binary Chunk
+                    // Binary
                     if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
                         incomingChunks.push(data);
                         incomingSize += data.byteLength || data.length;
@@ -690,7 +638,7 @@
                         return;
                     }
 
-                    // 2. Control Messages
+                    // Control
                     if (data.type === 'INIT') {
                         if (data.mode === 'default') {
                             document.getElementById('loading-msg').innerText = "Loading Standard PDF...";
@@ -704,9 +652,7 @@
                         }
                     }
 
-                    if (data.type === 'FILE_HEADER') {
-                        totalExpectedSize = data.size;
-                    }
+                    if (data.type === 'FILE_HEADER') totalExpectedSize = data.size;
 
                     if (data.type === 'FILE_END') {
                         document.getElementById('loading-msg').innerText = "Processing PDF...";
@@ -717,17 +663,17 @@
 
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
-                        clearDrawings(false); // Clear drawings on page turn
                         if(pdfDoc) queueRenderPage(pageNum);
                     }
 
                     if (data.type === 'DRAW') {
-                        // Viewers receive 0.0-1.0 coords
-                        receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3]);
+                        // Viewer receives raw normalized 0-1 coords, scales locally
+                        receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3], true);
                     }
 
                     if (data.type === 'CLEAR') {
-                        clearDrawings(false);
+                        delete pageDrawings[pageNum];
+                        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
                     }
                 });
 
@@ -738,12 +684,10 @@
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 200, height: 200 });
                     document.getElementById('qr-btn').classList.remove('hidden');
                 }
-                
                 conn.on('close', () => alert("Host Disconnected"));
             });
         }
 
-        // Utils
         function copyLink() {
             document.getElementById('share-link').select();
             document.execCommand('copy');
