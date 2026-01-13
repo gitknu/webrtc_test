@@ -244,6 +244,20 @@
             z-index: 50;
             font-weight: 700; color: #000;
         }
+        
+        /* OFFLINE INDICATOR */
+        #offline-indicator {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(100, 100, 100, 0.9);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 250; /* Above UI layer if needed */
+            font-weight: 600; font-size: 0.9rem;
+        }
+        
         .bounce { animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
 
@@ -498,6 +512,12 @@
 
     <!-- 2. MAIN VIEWER -->
     
+    <!-- Offline Indicator -->
+    <div id="offline-indicator" class="hidden">
+        <i data-lucide="wifi-off" width="20" height="20"></i>
+        <span>Offline Mode</span>
+    </div>
+
     <!-- QR Modal -->
     <div id="qr-modal" onclick="toggleQR()">
         <div id="qr-code-box" onclick="event.stopPropagation()">
@@ -572,7 +592,7 @@
             </div>
         </button>
 
-        <!-- Speaker: Prev -->
+        <!-- Speaker OR Offline Listener: Prev -->
         <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
             <div class="btn-inner">
                 <i data-lucide="arrow-left" width="24" height="24"></i>
@@ -585,7 +605,7 @@
             <span id="page_num">--</span> / <span id="page_count">--</span>
         </div>
 
-        <!-- Speaker: Next -->
+        <!-- Speaker OR Offline Listener: Next -->
         <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
             <div class="btn-inner">
                 <i data-lucide="arrow-right" width="24" height="24"></i>
@@ -976,6 +996,27 @@
             new QRCode(document.getElementById("qrcode-modal-tgt"), { text: fullUrl, width: 250, height: 250, colorDark: "#000000" });
         }
 
+        // --- OFFLINE MODE HELPERS ---
+        function enterOfflineMode() {
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('offline-indicator').classList.remove('hidden');
+            
+            // Allow manual navigation for offline user
+            document.getElementById('prev').classList.remove('hidden');
+            document.getElementById('next').classList.remove('hidden');
+            document.getElementById('zone-prev').style.display = 'block';
+            document.getElementById('zone-next').style.display = 'block';
+        }
+
+        function exitOfflineMode() {
+            document.getElementById('offline-indicator').classList.add('hidden');
+            // Hide manual navigation (Listener becomes passive)
+            document.getElementById('prev').classList.add('hidden');
+            document.getElementById('next').classList.add('hidden');
+            document.getElementById('zone-prev').style.display = 'none';
+            document.getElementById('zone-next').style.display = 'none';
+        }
+
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
@@ -1083,7 +1124,6 @@
             transferInProgress = true;
             
             // --- FIX: Hide UI Immediately for Speaker ---
-            // Allows speaker to control slides even with 0 users
             document.getElementById('ui-layer').classList.add('hidden');
             
             // Sync anyone currently connected
@@ -1133,10 +1173,18 @@
             
             if(pageParam) pageNum = parseInt(pageParam);
 
+            // Hide main menu, show loading
             document.getElementById('listener-menu').classList.add('hidden');
             document.getElementById('loading-menu').classList.remove('hidden');
             isLeader = false;
             updateToolbarForRole();
+
+            // OFFLINE MODE CHECK
+            // If we have a page number (from QR), show PDF immediately in offline mode
+            // We do this while connection attempts in background
+            if(pageParam) {
+                enterOfflineMode();
+            }
 
             if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
 
@@ -1184,6 +1232,10 @@
 
                 function finishSetup() {
                     conn.send({ type: 'ACK_READY' });
+                    
+                    // EXIT OFFLINE MODE (Hide indicator, hide manual controls)
+                    exitOfflineMode();
+                    
                     document.getElementById('ui-layer').classList.add('hidden');
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
