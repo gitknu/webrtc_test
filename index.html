@@ -315,8 +315,9 @@
         }
 
         body.landscape-mode .btn-inner {
-            /* Rotate 90deg Clockwise (Standard Landscape - Top-Left Phone) */
-            transform: rotate(90deg);
+            /* Rotate -90deg Counter-Clockwise (Standard Landscape - Top-Left Phone) */
+            /* This makes the text read Bottom-to-Top, which is Upright for the user holding the phone sideways */
+            transform: rotate(-90deg);
             
             /* Swap Dimensions for Layout */
             /* We want visual width to be 50px (Slot width) -> CSS Height */
@@ -331,7 +332,7 @@
             margin-left: -37.5px; /* Half of width */
         }
 
-        body.landscape-mode #page-info { transform: rotate(90deg); }
+        body.landscape-mode #page-info { transform: rotate(-90deg); }
 
         /* --- FULL SCREEN CONTROLS LAYER --- */
         #fs-controls {
@@ -369,9 +370,9 @@
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
         /* Rotate FS Controls in Landscape */
-        body.landscape-mode #fs-exit { transform: rotate(90deg); }
-        body.landscape-mode #fs-hand { transform: rotate(90deg); }
-        body.landscape-mode #fs-page-info { transform: rotate(90deg); origin: center; }
+        body.landscape-mode #fs-exit { transform: rotate(-90deg); }
+        body.landscape-mode #fs-hand { transform: rotate(-90deg); }
+        body.landscape-mode #fs-page-info { transform: rotate(-90deg); origin: center; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
