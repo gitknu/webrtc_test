@@ -8,13 +8,12 @@
     <!-- Fonts: Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Libraries -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- New: HTML5 QR Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -27,7 +26,6 @@
             
             --color-primary: #0b5394; /* Blue */
             --color-accent: #b80000;  /* Red */
-            --color-success: #2e7d32; /* Green */
             
             --color-border: #cccccc;
             --shadow: 0 8px 24px rgba(0,0,0,0.15);
@@ -40,7 +38,7 @@
             background-color: var(--color-bg);
             color: var(--color-text);
             font-family: 'Montserrat', sans-serif;
-            font-size: 18px; 
+            font-size: 16px; /* Base size */
             overflow: hidden; 
             height: 100vh;
             display: flex; flex-direction: column;
@@ -49,134 +47,130 @@
         /* --- UI OVERLAYS (Start Menu / Lobby) --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(244, 244, 244, 0.98); z-index: 200;
+            background: rgba(244, 244, 244, 1); z-index: 200;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            overflow-y: auto; /* Allow scrolling on small screens */
+            overflow-y: auto; padding: 20px;
         }
         
         .card {
             background: var(--color-card); 
             color: var(--color-text);
-            padding: 1.5rem; 
-            border-radius: 1rem;
+            padding: 2rem; 
+            border-radius: 1.5rem;
             text-align: center; 
-            max-width: 500px; width: 92%;
+            max-width: 500px; width: 100%;
             box-shadow: var(--shadow);
             border: 1px solid var(--color-border);
-            margin: 1rem;
-            transition: all 0.3s ease;
+            display: flex; flex-direction: column; gap: 1.5rem;
         }
         
         .hidden { display: none !important; }
 
         h2, h3 { 
-            margin-top: 0; margin-bottom: 1rem;
-            color: var(--color-primary); 
-            font-weight: 600;
+            margin: 0;
+            color: var(--color-text); 
+            font-weight: 700;
+            font-size: 1.5rem;
         }
 
-        p { margin: 0.5rem 0; font-size: 0.9rem; color: #555; }
+        p { margin: 0; font-size: 1rem; color: #555; }
         
-        /* --- BIG ROLE BUTTONS --- */
+        /* --- ROLE BUTTONS --- */
         #role-menu {
             display: flex; flex-direction: column; gap: 20px;
-            width: 100%; max-width: 500px; padding: 20px;
+            width: 100%; max-width: 500px;
             height: 100%; justify-content: center;
         }
 
         .role-btn {
-            flex: 1; min-height: 180px;
-            border: none; border-radius: 1rem;
+            flex: 1; min-height: 200px; max-height: 40vh;
+            border: none; border-radius: 1.5rem;
             font-family: 'Montserrat', sans-serif;
-            font-size: 1.5rem; font-weight: 600;
+            font-size: 1.8rem; font-weight: 700;
             color: white; cursor: pointer;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            gap: 15px;
+            gap: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: transform 0.1s, box-shadow 0.2s;
+            transition: transform 0.1s;
         }
 
         .role-btn:active { transform: scale(0.98); }
-
-        .role-listener { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); background-color: var(--color-primary); }
-        .role-speaker { background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); background-color: var(--color-accent); }
+        .role-listener { background-color: var(--color-primary); }
+        .role-speaker { background-color: var(--color-accent); }
         
-        /* Inputs & Standard Buttons */
+        /* --- INPUTS & BUTTONS --- */
         button.menu-btn {
             background: var(--color-primary); 
             color: white; border: none;
-            padding: 1rem; 
-            font-size: 1rem; 
+            padding: 1.2rem; 
+            font-size: 1.1rem; 
             font-family: 'Montserrat', sans-serif;
-            border-radius: 0.5rem;
-            cursor: pointer; margin: 0.5rem 0; width: 100%;
-            transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-weight: 600;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
             display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        button.menu-btn:active { transform: scale(0.98); }
+        button.menu-btn:active { transform: scale(0.98); background: #084278; }
         
         button.menu-btn.secondary { 
             background: white; 
             color: var(--color-text); 
             border: 2px solid var(--color-border); 
+            box-shadow: none;
         }
-        button.menu-btn.success { background: var(--color-success); font-weight: 600; }
-        button.menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        button.menu-btn.danger { background: var(--color-accent); }
 
         input[type="text"] {
-            padding: 1rem; width: 100%; margin-bottom: 1rem;
+            padding: 1.2rem; width: 100%;
             background: #fff; 
             border: 2px solid var(--color-border);
             color: var(--color-text); 
-            border-radius: 0.5rem; 
+            border-radius: 0.8rem; 
             outline: none;
-            font-size: 1rem; text-align: center;
+            font-size: 1.1rem; text-align: center;
             font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
         }
         input[type="text"]:focus { border-color: var(--color-primary); }
         input[type="file"] { display: none; }
 
-        /* QR Scanner Styles */
+        /* --- QR SCANNER CUSTOMIZATION (Overrides) --- */
         #reader {
             width: 100%;
-            border-radius: 0.5rem;
+            border-radius: 1rem;
             overflow: hidden;
-            margin-bottom: 1rem;
             background: #000;
         }
-        #reader video { object-fit: cover; border-radius: 0.5rem; }
+        #reader video { object-fit: cover; border-radius: 1rem; }
+        
+        /* Force Library Buttons to match App Theme */
+        #reader button {
+            background-color: var(--color-primary) !important;
+            color: white !important;
+            border: none !important;
+            padding: 1.2rem !important;
+            border-radius: 0.8rem !important;
+            font-family: 'Montserrat', sans-serif !important;
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            margin-top: 10px !important;
+            width: 100% !important;
+        }
+        
+        /* Hide Useless Scanner Elements */
+        #html5-qrcode-button-camera-stop { display: none !important; }
+        #html5-qrcode-anchor-scan-type-change { display: none !important; }
+        #reader__dashboard_section_csr span { display: none !important; }
 
-        /* Client List */
-        #client-list {
-            text-align: left; max-height: 150px; overflow-y: auto;
-            background: #f9f9f9; border: 1px solid #eee;
-            border-radius: 0.5rem; padding: 0.5rem; margin: 1rem 0;
-        }
-        .client-row { 
-            display: flex; justify-content: space-between; 
-            padding: 0.8rem; border-bottom: 1px solid #eee; 
-            font-size: 0.9em; 
-        }
-        .status-ready { color: var(--color-primary); font-weight: 600; }
-        .status-wait { color: var(--color-accent); }
-
-        /* Progress Bar */
-        #progress-bar-container {
-            width: 100%; background: #ddd; height: 10px;
-            border-radius: 5px; margin-top: 1rem; overflow: hidden;
-        }
-        #progress-bar-fill { 
-            height: 100%; background: var(--color-primary); 
-            width: 0%; transition: width 0.2s; 
-        }
-
-        /* --- PDF VIEWER STYLES --- */
+        /* --- PDF VIEWER --- */
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
-            padding: 1rem 0.5rem 6rem 0.5rem; /* Space for toolbar */
+            padding: 1rem 0.5rem 6rem 0.5rem;
             position: relative;
             background: #e0e0e0;
         }
@@ -188,28 +182,23 @@
         }
         
         canvas#the-canvas { display: block; max-width: 100%; height: auto; }
-
-        /* Drawing Layer */
         canvas#draw-canvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-            touch-action: none; 
-            cursor: crosshair;
+            touch-action: none; cursor: crosshair;
             pointer-events: none; 
         }
 
         /* Touch Zones */
-        .touch-zone {
-            position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10;
-        }
+        .touch-zone { position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10; }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        /* QR Button */
+        /* Floating Controls */
         #qr-btn {
-            position: fixed; top: 1rem; right: 1rem;
+            position: fixed; top: 1.5rem; right: 1.5rem;
             background-color: var(--color-primary); 
-            border: none; color: white; padding: 0.8rem; border-radius: 50%;
+            border: none; color: white; padding: 1rem; border-radius: 50%;
             cursor: pointer; z-index: 50;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -218,48 +207,56 @@
         /* QR Modal */
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 300;
+            background: rgba(255,255,255,0.95); z-index: 300;
             justify-content: center; align-items: center; flex-direction: column;
-            backdrop-filter: blur(5px);
         }
-        #qr-code-box { background: white; padding: 1.5rem; border-radius: 1rem; }
+        #qr-code-box { 
+            background: white; padding: 2rem; border-radius: 1.5rem; 
+            box-shadow: var(--shadow); border: 1px solid var(--color-border);
+        }
 
-        /* Bottom Toolbar */
+        /* Toolbar */
         #toolbar {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 85px;
             background-color: var(--color-primary);
             display: flex; justify-content: space-around; align-items: center;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
         }
 
-        #page-info {
-            color: white; font-size: 1.1rem; font-weight: 500;
-            min-width: 60px; text-align: center;
-        }
+        #page-info { color: white; font-size: 1.2rem; font-weight: 600; min-width: 70px; text-align: center; }
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 0.5rem; border-radius: 0.5rem;
+            padding: 0.8rem; border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 60px;
+            min-width: 70px;
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.75rem; opacity: 0.9; margin-top: 4px; font-weight: 400; }
-        .tool-btn:disabled { opacity: 0.4; }
-        
+        .tool-btn span { font-size: 0.8rem; margin-top: 4px; font-weight: 500; }
         .tool-btn.danger { color: #ffcccc; }
 
         .file-label {
-            font-size: 0.9rem; color: var(--color-primary); 
-            margin-top: 0.5rem; word-break: break-all;
-            font-weight: 500;
+            font-size: 1rem; color: var(--color-primary); 
+            word-break: break-all; font-weight: 600;
+            padding: 10px; border: 1px dashed var(--color-primary);
+            border-radius: 0.5rem; background: rgba(11, 83, 148, 0.05);
         }
         
-        .back-link {
-            position: absolute; top: 20px; left: 20px;
-            color: #666; cursor: pointer; display: flex; align-items: center;
+        /* List */
+        #client-list {
+            text-align: left; max-height: 200px; overflow-y: auto;
+            background: #f9f9f9; border: 1px solid #eee;
+            border-radius: 0.8rem; padding: 0.5rem; margin: 0;
+            width: 100%;
         }
+        .client-row { 
+            display: flex; justify-content: space-between; 
+            padding: 1rem; border-bottom: 1px solid #eee; 
+            font-size: 1rem; font-weight: 500;
+        }
+        .status-ready { color: var(--color-primary); font-weight: 700; }
+        .status-wait { color: var(--color-accent); }
 
     </style>
 </head>
@@ -271,72 +268,79 @@
         <!-- STEP 1: ROLE SELECTION -->
         <div id="role-menu">
             <button class="role-btn role-listener" onclick="setupListener()">
-                <i data-lucide="ear" width="48" height="48"></i>
-                Я СЛУХАТИМУ
+                <i data-lucide="ear" width="64" height="64"></i>
+                Я СЛУХАЧ
             </button>
             <button class="role-btn role-speaker" onclick="setupSpeaker()">
-                <i data-lucide="mic-2" width="48" height="48"></i>
-                Я ВИСТУПАТИМУ
+                <i data-lucide="mic-2" width="64" height="64"></i>
+                Я ВЕДУЧИЙ
             </button>
         </div>
 
         <!-- STEP 2A: LISTENER SETUP -->
         <div id="listener-menu" class="card hidden">
-            <div class="back-link" onclick="location.reload()"><i data-lucide="arrow-left"></i> Назад</div>
-            <h3>Приєднатися</h3>
+            <button class="menu-btn secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+                <i data-lucide="arrow-left"></i> Назад
+            </button>
+
+            <h3>Підключення</h3>
             
             <div id="reader"></div> <!-- Camera View -->
-            <p style="margin-bottom:10px;">Скануйте QR-код ведучого</p>
             
-            <div style="width:100%; height:1px; background:#ddd; margin: 15px 0;"></div>
-            
-            <input type="text" id="join-input" placeholder="Або введіть ID вручну...">
-            <button class="menu-btn success" onclick="joinGame()">
-                <i data-lucide="link"></i> Підключитись
+            <p>Наведіть камеру на QR код</p>
+            <p style="font-size: 0.9rem; opacity: 0.6;">або</p>
+
+            <input type="text" id="join-input" placeholder="Введіть ID вручну">
+            <button class="menu-btn" onclick="joinGame()">
+                <i data-lucide="link"></i> ПРИЄДНАТИСЬ
             </button>
         </div>
 
         <!-- STEP 2B: SPEAKER SETUP -->
         <div id="speaker-menu" class="card hidden">
-            <div class="back-link" onclick="location.reload()"><i data-lucide="arrow-left"></i> Назад</div>
+            <button class="menu-btn secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+                <i data-lucide="arrow-left"></i> Назад
+            </button>
+            
             <h3>Кабінет Ведучого</h3>
             
             <!-- QR & ID -->
-            <div id="qr-container" style="background:white; padding:5px; display:inline-block; margin:5px 0; border: 1px solid #eee;"></div>
-            <input type="text" id="share-link" readonly onclick="this.select()" style="text-align:center; color:#555; background:#f0f0f0; margin-top:5px; font-size:0.8rem;">
+            <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 1px solid #eee; border-radius: 10px;"></div>
             
+            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 0.9rem; padding: 0.8rem; background: #f0f0f0;">
+
             <!-- Users -->
             <div id="client-list">
-                <div style="padding:10px; text-align:center; color:#888;">Чекаємо глядачів...</div>
+                <div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>
             </div>
 
             <!-- File Upload -->
-            <div style="margin: 15px 0; border-top:1px solid #eee; padding-top:15px;">
-                <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+                <div id="file-name" class="file-label hidden"></div>
                 <button class="menu-btn secondary" onclick="document.getElementById('file-upload').click()">
-                    <i data-lucide="upload"></i> Обрати файл (опція)
+                    <i data-lucide="upload"></i> ОБРАТИ СВІЙ ФАЙЛ
                 </button>
-                <div id="file-name" class="file-label">Демонстраційний файл</div>
+                <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
             </div>
 
             <!-- Start Button -->
-            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn success" disabled>
+            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn" disabled style="background-color: var(--color-accent);">
                 <i data-lucide="play"></i> ПОЧАТИ ВИСТУП
             </button>
             
-            <div id="sync-status" style="display:none; color: var(--color-primary); font-weight:600; margin-top:10px;">
-                <i data-lucide="loader-2" class="spin"></i> Відправка даних...
+            <div id="sync-status" style="display:none; color: var(--color-primary); font-weight:600; font-size: 1.1rem;">
+                <i data-lucide="loader-2" class="spin"></i> Завантаження...
             </div>
         </div>
 
-        <!-- LOADING SCREEN (Common) -->
-        <div id="loading-menu" class="card hidden">
-            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-primary); width:48px; height:48px;"></i>
-            <h3 id="loading-msg" style="margin: 15px 0;">З'єднання...</h3>
-            <div id="progress-bar-container" style="display:none;">
-                <div id="progress-bar-fill"></div>
+        <!-- LOADING SCREEN -->
+        <div id="loading-menu" class="card hidden" style="justify-content: center;">
+            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-primary); width:64px; height:64px;"></i>
+            <h3 id="loading-msg">З'єднання...</h3>
+            <div id="progress-bar-container" style="width: 100%; background: #ddd; height: 12px; border-radius: 6px; overflow: hidden; display: none;">
+                <div id="progress-bar-fill" style="height: 100%; background: var(--color-primary); width: 0%; transition: width 0.2s;"></div>
             </div>
-            <div id="status-text" style="font-size:0.9rem; margin-top:5px; color:#666;"></div>
+            <div id="status-text" style="font-size:1rem; color:#666;"></div>
         </div>
     </div>
 
@@ -345,22 +349,22 @@
     <!-- QR Modal -->
     <div id="qr-modal" onclick="toggleQR()">
         <div id="qr-code-box" onclick="event.stopPropagation()">
+            <h3 style="margin-bottom: 20px;">Поділитися</h3>
             <div id="qrcode-modal-tgt"></div>
-            <p style="text-align:center; margin-top:10px; font-size:0.9rem;">Дайте іншим відсканувати це</p>
+            <button class="menu-btn secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
         </div>
-        <button class="menu-btn secondary" style="width:auto; margin-top:20px; border-color:#999;" onclick="toggleQR()">Закрити</button>
     </div>
 
     <!-- Floating QR Button -->
     <button id="qr-btn" onclick="toggleQR()" class="hidden">
-        <i data-lucide="qr-code"></i>
+        <i data-lucide="qr-code" width="32" height="32"></i>
     </button>
 
     <!-- Invisible Click Zones -->
     <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
     <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
-    <!-- PDF & Drawing Container -->
+    <!-- PDF Container -->
     <div id="pdf-container">
         <div class="canvas-wrapper">
             <canvas id="the-canvas"></canvas>
@@ -368,15 +372,15 @@
         </div>
     </div>
 
-    <!-- Bottom Toolbar -->
+    <!-- Toolbar -->
     <div id="toolbar">
         <button class="tool-btn" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="28" height="28"></i>
+            <i data-lucide="arrow-left" width="32" height="32"></i>
             <span>Назад</span>
         </button>
 
         <button class="tool-btn danger" id="eraser-btn" onclick="clearDrawings(true)" style="display:none;">
-            <i data-lucide="eraser" width="28" height="28"></i>
+            <i data-lucide="eraser" width="32" height="32"></i>
             <span>Стерти</span>
         </button>
 
@@ -385,12 +389,12 @@
         </div>
 
         <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="28" height="28"></i>
+            <i data-lucide="rotate-cw" width="32" height="32"></i>
             <span>Оберт</span>
         </button>
 
         <button class="tool-btn" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="28" height="28"></i>
+            <i data-lucide="arrow-right" width="32" height="32"></i>
             <span>Далі</span>
         </button>
     </div>
@@ -400,43 +404,34 @@
         const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
         const CHUNK_SIZE = 16 * 1024;
         
-        // Viewer State
         let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
         let rotation = 0;
         
-        // Canvas Refs
         const pdfCanvas = document.getElementById('the-canvas');
         const pdfCtx = pdfCanvas.getContext('2d');
         const drawCanvas = document.getElementById('draw-canvas');
         const drawCtx = drawCanvas.getContext('2d');
         const container = document.getElementById('pdf-container');
         
-        // Network State
         let peer = null;
         let connections = []; 
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
         
-        // Incoming File State
         let incomingChunks = []; 
         let incomingSize = 0;
         let totalExpectedSize = 0;
 
-        // Drawing State
         let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        let lastX = 0, lastY = 0;
         let pageMarks = {};
 
-        // Scanner
         let html5QrcodeScanner = null;
 
-        // Init Libraries
         lucide.createIcons();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // Auto-join Check
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             if (params.get('host')) {
@@ -446,54 +441,53 @@
             initDrawingListeners();
         };
 
-        // --- NEW UI LOGIC ---
+        // --- UI FLOW ---
 
         function setupListener() {
             document.getElementById('role-menu').classList.add('hidden');
             document.getElementById('listener-menu').classList.remove('hidden');
             
-            // Init Scanner
             html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+                "reader", 
+                { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
+                false
             );
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Check if it's a full URL or just an ID
+        function onScanSuccess(decodedText) {
             let hostId = decodedText;
             try {
                 const url = new URL(decodedText);
                 const params = new URLSearchParams(url.search);
                 if(params.get('host')) hostId = params.get('host');
-            } catch(e) {
-                // Not a URL, assume ID
-            }
+            } catch(e) {}
             
-            // Stop scanner
             if(html5QrcodeScanner) html5QrcodeScanner.clear();
-            
             joinGame(hostId);
         }
 
-        function onScanFailure(error) {
-            // handle scan failure, usually better to ignore and keep scanning.
-            // console.warn(`Code scan error = ${error}`);
-        }
+        function onScanFailure(error) { /* Ignore */ }
 
         function setupSpeaker() {
             document.getElementById('role-menu').classList.add('hidden');
-            // Init leader logic immediately to get ID
             initLeader();
+        }
+
+        function handleFileSelect(input) {
+            if (input.files[0]) {
+                leaderPdfBlob = input.files[0];
+                const lbl = document.getElementById('file-name');
+                lbl.innerText = "Файл: " + leaderPdfBlob.name;
+                lbl.classList.remove('hidden');
+            }
         }
 
         // --- PDF ENGINE ---
         function getOptimalScale(page) {
             const containerWidth = container.clientWidth - 20; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
-            const ratio = containerWidth / viewport.width;
-            const pixelRatio = window.devicePixelRatio || 1;
-            return ratio * pixelRatio;
+            return (containerWidth / viewport.width) * (window.devicePixelRatio || 1);
         }
 
         async function renderPdf(source) {
@@ -504,7 +498,6 @@
                 renderPage(pageNum);
                 return true;
             } catch (e) {
-                console.error(e);
                 alert("Помилка PDF: " + e.message);
                 return false;
             }
@@ -518,17 +511,13 @@
                 
                 pdfCanvas.height = viewport.height;
                 pdfCanvas.width = viewport.width;
-
                 drawCanvas.height = viewport.height;
                 drawCanvas.width = viewport.width;
                 
-                drawCtx.lineCap = 'round';
-                drawCtx.lineJoin = 'round';
-                drawCtx.lineWidth = 4;
-                drawCtx.strokeStyle = '#b80000'; 
+                drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+                drawCtx.lineWidth = 4; drawCtx.strokeStyle = '#b80000'; 
 
                 const renderContext = { canvasContext: pdfCtx, viewport: viewport };
-                
                 page.render(renderContext).promise.then(() => {
                     pageRendering = false;
                     redrawStoredLines(num);
@@ -546,11 +535,10 @@
         }
 
         function queueRenderPage(num) {
-            if (pageRendering) pageNumPending = num;
-            else renderPage(num);
+            if (pageRendering) pageNumPending = num; else renderPage(num);
         }
 
-        // --- DRAWING LOGIC ---
+        // --- DRAWING ---
         function initDrawingListeners() {
             drawCanvas.addEventListener('mousedown', startDrawing);
             drawCanvas.addEventListener('mousemove', draw);
@@ -567,11 +555,9 @@
 
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
-            const scaleX = drawCanvas.width / rect.width;
-            const scaleY = drawCanvas.height / rect.height;
             return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left) * (drawCanvas.width / rect.width),
+                y: (e.clientY - rect.top) * (drawCanvas.height / rect.height)
             };
         }
 
@@ -669,19 +655,11 @@
             }, 200);
         });
 
-        // --- LEADER LOGIC ---
-
-        function handleFileSelect(input) {
-            if (input.files[0]) {
-                leaderPdfBlob = input.files[0];
-                document.getElementById('file-name').innerText = "Обрано: " + leaderPdfBlob.name;
-            }
-        }
+        // --- PEER JS LOGIC ---
 
         function initLeader() {
             isLeader = true;
             document.getElementById('speaker-menu').classList.remove('hidden');
-            
             drawCanvas.style.pointerEvents = 'auto';
             document.getElementById('eraser-btn').style.display = 'flex'; 
 
@@ -690,12 +668,11 @@
                 const url = window.location.href.split('?')[0] + '?host=' + id;
                 document.getElementById('share-link').value = url;
                 
-                // Clear and create new QRs
                 document.getElementById("qr-container").innerHTML = "";
                 document.getElementById("qrcode-modal-tgt").innerHTML = "";
                 
-                new QRCode(document.getElementById("qr-container"), { text: url, width: 128, height: 128 });
-                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 200, height: 200 });
+                new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150 });
+                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250 });
                 
                 document.getElementById('qr-btn').classList.remove('hidden');
                 document.getElementById('btn-start-sync').disabled = false;
@@ -728,7 +705,7 @@
         function updateClientList() {
             const list = document.getElementById('client-list');
             if(connections.length === 0) {
-                list.innerHTML = '<div style="padding:10px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
+                list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
                 return;
             }
             list.innerHTML = connections.map(c => `
@@ -741,32 +718,24 @@
             `).join('');
             
             if(!transferInProgress) {
-                document.getElementById('btn-start-sync').innerHTML = `<i data-lucide="play"></i> ПОЧАТИ ВИСТУП (${connections.length})`;
+                document.getElementById('btn-start-sync').innerHTML = `<i data-lucide="play"></i> ПОЧАТИ (${connections.length})`;
                 lucide.createIcons();
             }
         }
 
         function startDistribution() {
-            // Determine source
-            if(leaderPdfBlob) {
-                renderPdf(URL.createObjectURL(leaderPdfBlob));
-            } else {
-                renderPdf(DEFAULT_PDF_URL);
-            }
+            if(leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
+            else renderPdf(DEFAULT_PDF_URL);
 
-            if (connections.length === 0) return alert("Чекайте підключень або виступайте соло!");
+            if (connections.length === 0) {
+                 document.getElementById('ui-layer').classList.add('hidden');
+                 return;
+            }
             
             transferInProgress = true;
             document.getElementById('btn-start-sync').style.display = 'none';
             document.getElementById('sync-status').style.display = 'block';
-            
-            // Sync everyone
             connections.forEach(c => syncSingleClient(c));
-            
-            // If solo or waiting for ack
-            if(connections.length === 0) {
-                 document.getElementById('ui-layer').classList.add('hidden');
-            }
         }
 
         function syncSingleClient(client) {
@@ -776,34 +745,27 @@
             const mode = leaderPdfBlob ? 'custom' : 'default';
             client.conn.send({ type: 'INIT', mode: mode });
 
-            if (mode === 'custom') {
-                sendFileRaw(client.conn, leaderPdfBlob);
-            }
+            if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
         }
 
         function sendFileRaw(conn, blob) {
             conn.send({ type: 'FILE_HEADER', size: blob.size });
-
             let offset = 0;
             const reader = new FileReader();
-
             reader.onload = function(e) {
                 if (conn.dataChannel.bufferedAmount > 16 * 1024 * 1024) {
                     setTimeout(() => { conn.send(e.target.result); nextSlice(); }, 100);
                     return;
                 }
-                try { conn.send(e.target.result); } catch(err) { console.error(err); }
+                try { conn.send(e.target.result); } catch(err) {}
                 offset += e.target.result.byteLength;
                 nextSlice();
             };
-
             function nextSlice() {
                 if (offset < blob.size) {
                     if (conn.dataChannel.bufferedAmount > 64 * 1024) setTimeout(nextSlice, 10);
                     else reader.readAsArrayBuffer(blob.slice(offset, offset + CHUNK_SIZE));
-                } else {
-                    conn.send({ type: 'FILE_END' });
-                }
+                } else conn.send({ type: 'FILE_END' });
             }
             nextSlice();
         }
@@ -819,30 +781,21 @@
             connections.forEach(c => { if(c.conn.open) c.conn.send(msg); });
         }
 
-        // --- VIEWER LOGIC ---
-
         function joinGame(id) {
             const hostId = id || document.getElementById('join-input').value;
-            if (!hostId) return alert("Введіть ID або скануйте QR");
+            if (!hostId) return alert("Потрібен ID або QR");
 
             document.getElementById('listener-menu').classList.add('hidden');
             document.getElementById('loading-menu').classList.remove('hidden');
-
-            // Stop scanner if running
-            if(html5QrcodeScanner) {
-                try { html5QrcodeScanner.clear(); } catch(e){}
-            }
+            if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
 
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
 
-                conn.on('open', () => {
-                    document.getElementById('loading-msg').innerText = "Пошук ведучого...";
-                });
+                conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
 
                 conn.on('data', async data => {
-                    // Binary Chunk
                     if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
                         incomingChunks.push(data);
                         incomingSize += data.byteLength || data.length;
@@ -851,8 +804,6 @@
                         document.getElementById('status-text').innerText = `${pct}%`;
                         return;
                     }
-
-                    // Control Messages
                     if (data.type === 'INIT') {
                         if (data.mode === 'default') {
                             document.getElementById('loading-msg').innerText = "Завантаження...";
@@ -861,51 +812,33 @@
                         } else {
                             document.getElementById('loading-msg').innerText = "Прийом файлу...";
                             document.getElementById('progress-bar-container').style.display = 'block';
-                            incomingChunks = [];
-                            incomingSize = 0;
+                            incomingChunks = []; incomingSize = 0;
                         }
                     }
-
-                    if (data.type === 'FILE_HEADER') {
-                        totalExpectedSize = data.size;
-                    }
-
+                    if (data.type === 'FILE_HEADER') totalExpectedSize = data.size;
                     if (data.type === 'FILE_END') {
                         document.getElementById('loading-msg').innerText = "Обробка...";
                         const blob = new Blob(incomingChunks, { type: 'application/pdf' });
                         const ok = await renderPdf(URL.createObjectURL(blob));
                         if (ok) finishSetup();
                     }
-
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
-                        clearDrawings(false); 
-                        if(pdfDoc) queueRenderPage(pageNum);
+                        clearDrawings(false); if(pdfDoc) queueRenderPage(pageNum);
                     }
-
-                    if (data.type === 'DRAW') {
-                        receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3]);
-                    }
-
-                    if (data.type === 'CLEAR') {
-                        clearDrawings(true);
-                    }
+                    if (data.type === 'DRAW') receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3]);
+                    if (data.type === 'CLEAR') clearDrawings(true);
                 });
 
                 function finishSetup() {
                     conn.send({ type: 'ACK_READY' });
                     document.getElementById('ui-layer').classList.add('hidden');
-                    
-                    // Show QR Code to share immediately
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
-                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 200, height: 200 });
+                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250 });
                     document.getElementById('qr-btn').classList.remove('hidden');
-                    
-                    // Auto open QR modal so they can share
                     toggleQR();
                 }
-                
                 conn.on('close', () => alert("Ведучий від'єднався"));
             });
         }
