@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sync PDF Viewer</title>
+    <title>Синхро PDF</title>
     
+    <!-- Fonts: Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+
     <!-- Libraries -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -13,107 +18,146 @@
 
     <style>
         :root {
-            --bg-color: #2e2e2e;
-            --bar-color: #1a1a1a;
-            --text-color: #ffffff;
-            --accent-color: #3498db;
-            --success: #2ecc71;
-            --warning: #f1c40f;
-            --danger: #e74c3c;
+            /* Palette Configuration */
+            --color-bg: #f4f4f4;
+            --color-card: #ffffff;
+            --color-text: #000000;
+            
+            --color-primary: #0b5394; /* Blue */
+            --color-accent: #b80000;  /* Red */
+            
+            --color-border: #cccccc;
+            --shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
 
         * { box-sizing: border-box; touch-action: manipulation; }
 
         body {
             margin: 0; padding: 0;
-            background-color: var(--bg-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; height: 100vh;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            /* Requested: Montserrat, Large font */
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px; 
+            overflow: hidden; 
+            height: 100vh;
             display: flex; flex-direction: column;
-            color: var(--text-color);
         }
 
-        /* --- UI OVERLAYS --- */
+        /* --- UI OVERLAYS (Start Menu / Lobby) --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92); z-index: 200;
+            background: rgba(244, 244, 244, 0.95); z-index: 200;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
         }
         
         .card {
-            background: var(--bar-color); color: white;
-            padding: 25px; border-radius: 15px;
-            text-align: center; max-width: 400px; width: 90%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid #444;
+            background: var(--color-card); 
+            color: var(--color-text);
+            padding: 1.5rem; 
+            border-radius: 1rem;
+            text-align: center; 
+            max-width: 400px; width: 92%;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--color-border);
         }
         
         .hidden { display: none !important; }
 
-        h2, h3 { margin-top: 0; color: var(--accent-color); }
+        h2, h3 { 
+            margin-top: 0; margin-bottom: 1rem;
+            color: var(--color-primary); 
+            font-weight: 600;
+        }
+
+        p { margin: 0.5rem 0; font-size: 0.9rem; color: #555; }
         
+        /* Adaptive Inputs & Buttons */
         button.menu-btn {
-            background: var(--accent-color); color: white; border: none;
-            padding: 12px 20px; font-size: 16px; border-radius: 8px;
-            cursor: pointer; margin: 8px 0; width: 100%;
-            transition: opacity 0.2s, transform 0.1s;
+            background: var(--color-primary); 
+            color: white; border: none;
+            padding: 1rem; 
+            font-size: 1rem; 
+            font-family: 'Montserrat', sans-serif;
+            border-radius: 0.5rem;
+            cursor: pointer; margin: 0.5rem 0; width: 100%;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         button.menu-btn:active { transform: scale(0.98); }
-        button.menu-btn.secondary { background: #444; }
-        button.menu-btn.success { background: var(--success); font-weight: bold; }
+        
+        /* Secondary actions (Gray/Red based on context, here simple gray for utility) */
+        button.menu-btn.secondary { 
+            background: white; 
+            color: var(--color-text); 
+            border: 2px solid var(--color-border); 
+        }
+        button.menu-btn.success { background: var(--color-primary); font-weight: 500; }
         
         input[type="text"] {
-            padding: 12px; width: 100%; margin-bottom: 10px;
-            background: #333; border: 1px solid #555;
-            color: white; border-radius: 8px; outline: none;
+            padding: 1rem; width: 100%; margin-bottom: 1rem;
+            background: #fff; 
+            border: 2px solid var(--color-primary);
+            color: var(--color-text); 
+            border-radius: 0.5rem; 
+            outline: none;
+            font-size: 1rem;
+            font-family: 'Montserrat', sans-serif;
         }
         input[type="file"] { display: none; }
 
         /* Client List */
         #client-list {
-            text-align: left; max-height: 120px; overflow-y: auto;
-            background: #222; border-radius: 8px; padding: 5px; margin: 10px 0;
+            text-align: left; max-height: 150px; overflow-y: auto;
+            background: #f9f9f9; border: 1px solid #eee;
+            border-radius: 0.5rem; padding: 0.5rem; margin: 1rem 0;
         }
-        .client-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 0.9em; }
-        .status-ready { color: var(--success); }
-        .status-wait { color: var(--warning); }
+        .client-row { 
+            display: flex; justify-content: space-between; 
+            padding: 0.8rem; border-bottom: 1px solid #eee; 
+            font-size: 0.9em; 
+        }
+        .status-ready { color: var(--color-primary); font-weight: 600; }
+        .status-wait { color: var(--color-accent); }
 
         /* Progress Bar */
         #progress-bar-container {
-            width: 100%; background: #444; height: 8px;
-            border-radius: 4px; margin-top: 15px; overflow: hidden;
+            width: 100%; background: #ddd; height: 10px;
+            border-radius: 5px; margin-top: 1rem; overflow: hidden;
         }
-        #progress-bar-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.2s; }
+        #progress-bar-fill { 
+            height: 100%; background: var(--color-primary); 
+            width: 0%; transition: width 0.2s; 
+        }
 
         /* --- PDF VIEWER STYLES --- */
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
-            padding: 20px 10px 90px 10px;
+            padding: 1rem 0.5rem 6rem 0.5rem; /* Space for toolbar */
             position: relative;
+            background: #e0e0e0; /* Distinct from card bg */
         }
 
         .canvas-wrapper {
             position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: white;
         }
         
-        canvas#the-canvas {
-            display: block;
-            max-width: 100%; height: auto;
-        }
+        canvas#the-canvas { display: block; max-width: 100%; height: auto; }
 
         /* Drawing Layer */
         canvas#draw-canvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-            touch-action: none; /* Critical for precise touch drawing */
+            touch-action: none; 
             cursor: crosshair;
             pointer-events: none; 
         }
 
-        /* Navigation Zones */
+        /* Touch Zones */
         .touch-zone {
             position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10;
         }
@@ -122,99 +166,135 @@
 
         /* QR Button */
         #qr-btn {
-            position: fixed; top: 20px; right: 20px;
-            background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
-            border: none; color: white; padding: 10px; border-radius: 50%;
+            position: fixed; top: 1rem; right: 1rem;
+            background-color: var(--color-primary); 
+            border: none; color: white; padding: 0.8rem; border-radius: 50%;
             cursor: pointer; z-index: 50;
             display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
         /* QR Modal */
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 300;
+            background: rgba(0,0,0,0.8); z-index: 300;
             justify-content: center; align-items: center; flex-direction: column;
             backdrop-filter: blur(5px);
         }
-        #qr-code-box { background: white; padding: 20px; border-radius: 15px; }
+        #qr-code-box { background: white; padding: 1.5rem; border-radius: 1rem; }
 
-        /* Toolbar */
+        /* Bottom Toolbar */
         #toolbar {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
-            background-color: var(--bar-color);
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
+            background-color: var(--color-primary); /* Blue toolbar */
             display: flex; justify-content: space-around; align-items: center;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.3); z-index: 20;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
         }
 
         #page-info {
-            color: var(--text-color); font-size: 14px; font-weight: bold;
+            color: white; font-size: 1.1rem; font-weight: 500;
             min-width: 60px; text-align: center;
         }
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 10px; border-radius: 10px;
+            padding: 0.5rem; border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-width: 60px;
         }
-        .tool-btn:active { background-color: rgba(255,255,255,0.1); }
-        .tool-btn span { font-size: 10px; opacity: 0.8; margin-top: 2px; }
-        .tool-btn:disabled { opacity: 0.3; }
-        .tool-btn.danger { color: #ff6b6b; }
+        .tool-btn:active { background-color: rgba(255,255,255,0.2); }
+        .tool-btn span { font-size: 0.75rem; opacity: 0.9; margin-top: 4px; font-weight: 400; }
+        .tool-btn:disabled { opacity: 0.4; }
+        
+        .tool-btn.danger { color: #ffcccc; } /* Light red for contrast on blue */
+
+        /* Utility specific for typography request */
+        .section-divider {
+            border-bottom: 1px solid var(--color-border); 
+            padding-bottom: 1rem; margin-bottom: 1rem;
+        }
+        .file-label {
+            font-size: 0.9rem; color: var(--color-primary); 
+            margin-top: 0.5rem; word-break: break-all;
+        }
 
     </style>
 </head>
 <body>
 
-    <!-- UI LAYER -->
+    <!-- 1. UI LAYER -->
     <div id="ui-layer">
+        
+        <!-- Start Menu -->
         <div id="start-menu" class="card">
-            <h2>PDF Sync</h2>
-            <div style="border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 15px;">
-                <p style="opacity: 0.8; margin-bottom: 10px;">I am Presenting</p>
-                <button class="menu-btn secondary" onclick="initLeader('default')">Use Demo PDF</button>
-                <button class="menu-btn" onclick="document.getElementById('file-upload').click()">Upload File</button>
+            <h2>Синхро PDF</h2>
+            
+            <div class="section-divider">
+                <p>Я ведучий</p>
+                <button class="menu-btn secondary" onclick="initLeader('default')">Демо файл</button>
+                <button class="menu-btn" onclick="document.getElementById('file-upload').click()">Обрати файл</button>
                 <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
-                <div id="file-name" style="font-size: 0.8em; color: var(--accent-color); margin-top: 5px;"></div>
+                <div id="file-name" class="file-label"></div>
             </div>
+
             <div>
-                <p style="opacity: 0.8; margin-bottom: 10px;">I am Watching</p>
-                <input type="text" id="join-input" placeholder="Enter Host ID...">
-                <button class="menu-btn success" onclick="joinGame()">Join Session</button>
+                <p>Я глядач</p>
+                <input type="text" id="join-input" placeholder="ID ведучого...">
+                <button class="menu-btn success" onclick="joinGame()">Приєднатись</button>
             </div>
         </div>
 
+        <!-- Leader Lobby -->
         <div id="leader-menu" class="card hidden">
-            <h3>Lobby</h3>
-            <div id="qr-container" style="background:white; padding:10px; border-radius:10px; display:inline-block; margin:10px 0;"></div>
-            <input type="text" id="share-link" readonly onclick="this.select()" style="text-align:center; font-family:monospace;">
-            <button class="menu-btn secondary" onclick="copyLink()" style="margin-bottom: 15px;">Copy Link</button>
-            <div id="client-list"><div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div></div>
-            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn success" disabled>Start Presentation</button>
-            <div id="sync-status" style="display:none; color: var(--accent-color); font-weight:bold; margin-top:10px;">Sending file...</div>
+            <h3>Очікування</h3>
+            <div id="qr-container" style="background:white; padding:5px; display:inline-block; margin:5px 0;"></div>
+            
+            <input type="text" id="share-link" readonly onclick="this.select()" style="text-align:center; color:#555; background:#f0f0f0; border-color:#ddd;">
+            <button class="menu-btn secondary" onclick="copyLink()" style="margin-bottom: 1rem;">Копіювати</button>
+            
+            <div id="client-list">
+                <div style="padding:10px; text-align:center; color:#888;">Чекаємо глядачів...</div>
+            </div>
+
+            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn success" disabled>Почати</button>
+            
+            <div id="sync-status" style="display:none; color: var(--color-primary); font-weight:600; margin-top:10px;">
+                Відправка...
+            </div>
         </div>
 
+        <!-- Viewer Loading -->
         <div id="loading-menu" class="card hidden">
-            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
-            <h3 id="loading-msg" style="margin: 15px 0;">Connecting...</h3>
-            <div id="progress-bar-container" style="display:none;"><div id="progress-bar-fill"></div></div>
-            <div id="status-text" style="font-size:0.8em; margin-top:5px; opacity:0.7;"></div>
+            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-primary);"></i>
+            <h3 id="loading-msg" style="margin: 15px 0;">З'єднання...</h3>
+            <div id="progress-bar-container" style="display:none;">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <div id="status-text" style="font-size:0.9rem; margin-top:5px; color:#666;"></div>
         </div>
     </div>
 
-    <!-- VIEWER & QR -->
+    <!-- 2. MAIN VIEWER -->
+    
+    <!-- QR Modal -->
     <div id="qr-modal" onclick="toggleQR()">
-        <div id="qr-code-box" onclick="event.stopPropagation()"><div id="qrcode-modal-tgt"></div></div>
-        <button class="menu-btn secondary" style="width:auto; margin-top:20px;" onclick="toggleQR()">Close</button>
+        <div id="qr-code-box" onclick="event.stopPropagation()">
+            <div id="qrcode-modal-tgt"></div>
+        </div>
+        <button class="menu-btn secondary" style="width:auto; margin-top:20px; border-color:#999;" onclick="toggleQR()">Закрити</button>
     </div>
-    <button id="qr-btn" onclick="toggleQR()" class="hidden"><i data-lucide="qr-code"></i></button>
 
-    <!-- TOUCH ZONES -->
+    <!-- Floating QR Button -->
+    <button id="qr-btn" onclick="toggleQR()" class="hidden">
+        <i data-lucide="qr-code"></i>
+    </button>
+
+    <!-- Invisible Click Zones -->
     <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
     <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
-    <!-- CANVAS WRAPPER -->
+    <!-- PDF & Drawing Container -->
     <div id="pdf-container">
         <div class="canvas-wrapper">
             <canvas id="the-canvas"></canvas>
@@ -222,64 +302,71 @@
         </div>
     </div>
 
-    <!-- TOOLBAR -->
+    <!-- Bottom Toolbar -->
     <div id="toolbar">
         <button class="tool-btn" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="24" height="24"></i>
-            <span>Prev</span>
+            <i data-lucide="arrow-left" width="28" height="28"></i>
+            <span>Назад</span>
         </button>
-        <button class="tool-btn danger" id="eraser-btn" onclick="triggerClear()" style="display:none;">
-            <i data-lucide="eraser" width="24" height="24"></i>
-            <span>Clear</span>
+
+        <button class="tool-btn danger" id="eraser-btn" onclick="clearDrawings(true)" style="display:none;">
+            <i data-lucide="eraser" width="28" height="28"></i>
+            <span>Стерти</span>
         </button>
-        <div id="page-info"><span id="page_num">--</span> / <span id="page_count">--</span></div>
+
+        <div id="page-info">
+            <span id="page_num">--</span> / <span id="page_count">--</span>
+        </div>
+
         <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="24" height="24"></i>
-            <span>Rotate</span>
+            <i data-lucide="rotate-cw" width="28" height="28"></i>
+            <span>Оберт</span>
         </button>
+
         <button class="tool-btn" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="24" height="24"></i>
-            <span>Next</span>
+            <i data-lucide="arrow-right" width="28" height="28"></i>
+            <span>Далі</span>
         </button>
     </div>
 
     <script>
-        // --- GLOBALS ---
-        const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
+        // --- CONFIG & GLOBALS ---
+        const DEFAULT_PDF_URL = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf';
         const CHUNK_SIZE = 16 * 1024;
         
-        // Viewer
+        // Viewer State
         let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
         let rotation = 0;
         
-        // Canvas
+        // Canvas Refs
         const pdfCanvas = document.getElementById('the-canvas');
         const pdfCtx = pdfCanvas.getContext('2d');
         const drawCanvas = document.getElementById('draw-canvas');
         const drawCtx = drawCanvas.getContext('2d');
         const container = document.getElementById('pdf-container');
         
-        // Network
+        // Network State
         let peer = null;
         let connections = []; 
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
         
-        // Download
+        // Incoming File State
         let incomingChunks = []; 
         let incomingSize = 0;
         let totalExpectedSize = 0;
 
-        // DRAWING & MEMORY
+        // Drawing State
         let isDrawing = false;
-        let lastX = 0, lastY = 0;
-        let pageDrawings = {}; // { pageNum: [ {x0,y0,x1,y1}, ... ] }
+        let lastX = 0;
+        let lastY = 0;
 
-        // Setup
+        // Init Libraries
         lucide.createIcons();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+        // Auto-join Check
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             if (params.get('host')) {
@@ -295,7 +382,8 @@
             const containerWidth = container.clientWidth - 20; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
             const ratio = containerWidth / viewport.width;
-            return ratio * (window.devicePixelRatio || 1);
+            const pixelRatio = window.devicePixelRatio || 1;
+            return ratio * pixelRatio;
         }
 
         async function renderPdf(source) {
@@ -307,7 +395,7 @@
                 return true;
             } catch (e) {
                 console.error(e);
-                alert("PDF Load Error: " + e.message);
+                alert("Помилка PDF: " + e.message);
                 return false;
             }
         }
@@ -318,22 +406,24 @@
                 const displayScale = getOptimalScale(page);
                 const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
                 
-                // Resize both canvases
-                pdfCanvas.height = drawCanvas.height = viewport.height;
-                pdfCanvas.width = drawCanvas.width = viewport.width;
+                // Resize PDF Canvas
+                pdfCanvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
 
-                // Reset drawing styles after resize
+                // Sync Drawing Canvas Size
+                drawCanvas.height = viewport.height;
+                drawCanvas.width = viewport.width;
+                
+                // Reset drawing style after resize
                 drawCtx.lineCap = 'round';
                 drawCtx.lineJoin = 'round';
-                drawCtx.lineWidth = 3;
-                drawCtx.strokeStyle = 'red';
+                drawCtx.lineWidth = 4; // Slightly thicker for visibility
+                drawCtx.strokeStyle = '#b80000'; // Accent color for drawing
 
-                // Render PDF
-                page.render({ canvasContext: pdfCtx, viewport: viewport }).promise.then(() => {
+                const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+                
+                page.render(renderContext).promise.then(() => {
                     pageRendering = false;
-                    // Restore drawings for this page
-                    redrawCurrentPageStrokes();
-                    
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
@@ -341,6 +431,7 @@
                 });
             });
 
+            // Update UI
             document.getElementById('page_num').textContent = num;
             document.getElementById('prev').disabled = num <= 1;
             document.getElementById('next').disabled = num >= pdfDoc.numPages;
@@ -352,16 +443,16 @@
             else renderPage(num);
         }
 
-        // --- DRAWING LOGIC (WYSIWYG + MEMORY) ---
+        // --- DRAWING LOGIC ---
         
         function initDrawingListeners() {
-            // Mouse
+            // Mouse Events
             drawCanvas.addEventListener('mousedown', startDrawing);
             drawCanvas.addEventListener('mousemove', draw);
             drawCanvas.addEventListener('mouseup', stopDrawing);
             drawCanvas.addEventListener('mouseout', stopDrawing);
 
-            // Touch
+            // Touch Events
             drawCanvas.addEventListener('touchstart', (e) => {
                 if(e.touches.length === 1) { e.preventDefault(); startDrawing(e.touches[0]); }
             });
@@ -371,19 +462,11 @@
             drawCanvas.addEventListener('touchend', stopDrawing);
         }
 
-        // Updated for Precision (Canvas Resolution vs CSS Size)
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
-            const clientX = e.clientX; 
-            const clientY = e.clientY;
-
-            // Calculate scale ratio (Internal Pixels / CSS Pixels)
-            const scaleX = drawCanvas.width / rect.width;
-            const scaleY = drawCanvas.height / rect.height;
-
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left),
+                y: (e.clientY - rect.top)
             };
         }
 
@@ -393,7 +476,9 @@
             const pos = getPos(e);
             lastX = pos.x;
             lastY = pos.y;
-            performDraw(lastX, lastY, lastX, lastY, true); // Draw Dot
+            
+            // Draw a dot immediately
+            performDraw(lastX, lastY, lastX, lastY, true);
         }
 
         function draw(e) {
@@ -404,34 +489,30 @@
             lastY = pos.y;
         }
 
-        function stopDrawing() { isDrawing = false; }
+        function stopDrawing() {
+            isDrawing = false;
+        }
 
         function performDraw(x0, y0, x1, y1, emit) {
             const w = drawCanvas.width;
             const h = drawCanvas.height;
 
-            // 1. Draw Locally
+            // Draw Locally
             drawCtx.beginPath();
             drawCtx.moveTo(x0, y0);
             drawCtx.lineTo(x1, y1);
             drawCtx.stroke();
 
-            // 2. Save to Memory (Normalized 0-1)
-            const nCoords = { x0: x0/w, y0: y0/h, x1: x1/w, y1: y1/h };
-            if (!pageDrawings[pageNum]) pageDrawings[pageNum] = [];
-            pageDrawings[pageNum].push(nCoords);
-
-            // 3. Network Broadcast
+            // Broadcast Normalized
             if (emit && isLeader) {
                 broadcast({
                     type: 'DRAW',
-                    coords: [nCoords.x0, nCoords.y0, nCoords.x1, nCoords.y1]
+                    coords: [x0 / w, y0 / h, x1 / w, y1 / h]
                 });
             }
         }
 
-        // Used by Viewers (Receiving) and Leader (Restoring Memory)
-        function receiveDraw(nx0, ny0, nx1, ny1, saveToMem = true) {
+        function receiveDraw(nx0, ny0, nx1, ny1) {
             const w = drawCanvas.width;
             const h = drawCanvas.height;
             
@@ -439,45 +520,29 @@
             drawCtx.moveTo(nx0 * w, ny0 * h);
             drawCtx.lineTo(nx1 * w, ny1 * h);
             drawCtx.stroke();
+        }
 
-            if (saveToMem) {
-                if (!pageDrawings[pageNum]) pageDrawings[pageNum] = [];
-                pageDrawings[pageNum].push({ x0: nx0, y0: ny0, x1: nx1, y1: ny1 });
+        function clearDrawings(emit) {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            if (emit && isLeader) {
+                broadcast({ type: 'CLEAR' });
             }
         }
 
-        function redrawCurrentPageStrokes() {
-            // Clear first
-            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            
-            // Replay memory for this page
-            const strokes = pageDrawings[pageNum];
-            if (strokes && strokes.length > 0) {
-                strokes.forEach(s => {
-                    receiveDraw(s.x0, s.y0, s.x1, s.y1, false); // false = don't duplicate memory
-                });
-            }
-        }
+        // --- CONTROLS ---
 
-        function triggerClear() {
-            // Delete memory for this page
-            delete pageDrawings[pageNum];
-            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            
-            if (isLeader) broadcast({ type: 'CLEAR' });
-        }
-
-        // --- NAVIGATION ---
         function onPrevPage() {
             if (!pdfDoc || pageNum <= 1) return;
             pageNum--;
-            queueRenderPage(pageNum); // Will redraw strokes automatically
+            clearDrawings(true); 
+            queueRenderPage(pageNum);
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
 
         function onNextPage() {
             if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
             pageNum++;
+            clearDrawings(true); 
             queueRenderPage(pageNum);
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
@@ -485,7 +550,8 @@
         function onRotate() {
             rotation += 90;
             if (rotation >= 360) rotation = 0;
-            queueRenderPage(pageNum); // Redraws PDF + Strokes mapped to new dimensions
+            clearDrawings(false); 
+            queueRenderPage(pageNum);
         }
 
         function toggleQR() {
@@ -496,10 +562,16 @@
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => { if(pdfDoc) renderPage(pageNum); }, 200);
+            resizeTimeout = setTimeout(() => {
+                if(pdfDoc) {
+                    clearDrawings(false); 
+                    renderPage(pageNum);
+                }
+            }, 200);
         });
 
         // --- LEADER LOGIC ---
+
         function handleFileSelect(input) {
             if (input.files[0]) {
                 leaderPdfBlob = input.files[0];
@@ -510,6 +582,7 @@
 
         function initLeader(mode) {
             isLeader = true;
+            
             drawCanvas.style.pointerEvents = 'auto';
             document.getElementById('eraser-btn').style.display = 'flex'; 
 
@@ -526,6 +599,7 @@
                 new QRCode(document.getElementById("qr-container"), { text: url, width: 128, height: 128 });
                 new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 200, height: 200 });
                 document.getElementById('qr-btn').classList.remove('hidden');
+
                 document.getElementById('btn-start-sync').disabled = false;
             });
 
@@ -533,8 +607,11 @@
                 const client = { id: conn.peer, conn: conn, ready: false };
                 connections.push(client);
                 updateClientList();
-                if (transferInProgress) conn.on('open', () => syncSingleClient(client));
-                
+
+                if (transferInProgress) {
+                    conn.on('open', () => syncSingleClient(client));
+                }
+
                 conn.on('data', data => {
                     if (data.type === 'ACK_READY') {
                         client.ready = true;
@@ -542,6 +619,7 @@
                         checkGlobalSync();
                     }
                 });
+
                 conn.on('close', () => {
                     connections = connections.filter(c => c.conn !== conn);
                     updateClientList();
@@ -552,21 +630,26 @@
         function updateClientList() {
             const list = document.getElementById('client-list');
             if(connections.length === 0) {
-                list.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div>';
-                document.getElementById('btn-start-sync').innerText = "Start Presentation";
+                list.innerHTML = '<div style="padding:10px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
+                document.getElementById('btn-start-sync').innerText = "Почати";
                 return;
             }
             list.innerHTML = connections.map(c => `
                 <div class="client-row">
-                    <span>User ${c.id.substr(0,4)}</span>
-                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">${c.ready ? 'Viewing' : 'Syncing'}</span>
+                    <span>Глядач ${c.id.substr(0,4)}</span>
+                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">
+                        ${c.ready ? 'Готовий' : 'Синхро'}
+                    </span>
                 </div>
             `).join('');
-            if(!transferInProgress) document.getElementById('btn-start-sync').innerText = `Start with ${connections.length} Viewer(s)`;
+            
+            if(!transferInProgress) {
+                document.getElementById('btn-start-sync').innerText = `Почати з (${connections.length})`;
+            }
         }
 
         function startDistribution() {
-            if (connections.length === 0) return alert("Wait for connections!");
+            if (connections.length === 0) return alert("Чекайте підключень!");
             transferInProgress = true;
             document.getElementById('btn-start-sync').style.display = 'none';
             document.getElementById('sync-status').style.display = 'block';
@@ -576,29 +659,38 @@
         function syncSingleClient(client) {
             client.ready = false;
             updateClientList();
+            
             const mode = leaderPdfBlob ? 'custom' : 'default';
             client.conn.send({ type: 'INIT', mode: mode });
-            if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
+
+            if (mode === 'custom') {
+                sendFileRaw(client.conn, leaderPdfBlob);
+            }
         }
 
         function sendFileRaw(conn, blob) {
             conn.send({ type: 'FILE_HEADER', size: blob.size });
+
             let offset = 0;
             const reader = new FileReader();
+
             reader.onload = function(e) {
                 if (conn.dataChannel.bufferedAmount > 16 * 1024 * 1024) {
                     setTimeout(() => { conn.send(e.target.result); nextSlice(); }, 100);
                     return;
                 }
-                try { conn.send(e.target.result); } catch(err) {}
+                try { conn.send(e.target.result); } catch(err) { console.error(err); }
                 offset += e.target.result.byteLength;
                 nextSlice();
             };
+
             function nextSlice() {
                 if (offset < blob.size) {
                     if (conn.dataChannel.bufferedAmount > 64 * 1024) setTimeout(nextSlice, 10);
                     else reader.readAsArrayBuffer(blob.slice(offset, offset + CHUNK_SIZE));
-                } else conn.send({ type: 'FILE_END' });
+                } else {
+                    conn.send({ type: 'FILE_END' });
+                }
             }
             nextSlice();
         }
@@ -615,9 +707,10 @@
         }
 
         // --- VIEWER LOGIC ---
+
         function joinGame(id) {
             const hostId = id || document.getElementById('join-input').value;
-            if (!hostId) return alert("ID Required");
+            if (!hostId) return alert("Введіть ID");
 
             document.getElementById('start-menu').classList.add('hidden');
             document.getElementById('loading-menu').classList.remove('hidden');
@@ -625,10 +718,13 @@
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
-                conn.on('open', () => document.getElementById('loading-msg').innerText = "Waiting for host...");
-                
+
+                conn.on('open', () => {
+                    document.getElementById('loading-msg').innerText = "Пошук ведучого...";
+                });
+
                 conn.on('data', async data => {
-                    // Binary
+                    // Binary Chunk
                     if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
                         incomingChunks.push(data);
                         incomingSize += data.byteLength || data.length;
@@ -638,24 +734,26 @@
                         return;
                     }
 
-                    // Control
+                    // Control Messages
                     if (data.type === 'INIT') {
                         if (data.mode === 'default') {
-                            document.getElementById('loading-msg').innerText = "Loading Standard PDF...";
+                            document.getElementById('loading-msg').innerText = "Завантаження...";
                             const ok = await renderPdf(DEFAULT_PDF_URL);
                             if(ok) finishSetup();
                         } else {
-                            document.getElementById('loading-msg').innerText = "Downloading PDF...";
+                            document.getElementById('loading-msg').innerText = "Прийом файлу...";
                             document.getElementById('progress-bar-container').style.display = 'block';
                             incomingChunks = [];
                             incomingSize = 0;
                         }
                     }
 
-                    if (data.type === 'FILE_HEADER') totalExpectedSize = data.size;
+                    if (data.type === 'FILE_HEADER') {
+                        totalExpectedSize = data.size;
+                    }
 
                     if (data.type === 'FILE_END') {
-                        document.getElementById('loading-msg').innerText = "Processing PDF...";
+                        document.getElementById('loading-msg').innerText = "Обробка...";
                         const blob = new Blob(incomingChunks, { type: 'application/pdf' });
                         const ok = await renderPdf(URL.createObjectURL(blob));
                         if (ok) finishSetup();
@@ -663,17 +761,16 @@
 
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
+                        clearDrawings(false); 
                         if(pdfDoc) queueRenderPage(pageNum);
                     }
 
                     if (data.type === 'DRAW') {
-                        // Viewer receives raw normalized 0-1 coords, scales locally
-                        receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3], true);
+                        receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3]);
                     }
 
                     if (data.type === 'CLEAR') {
-                        delete pageDrawings[pageNum];
-                        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                        clearDrawings(false);
                     }
                 });
 
@@ -684,14 +781,15 @@
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 200, height: 200 });
                     document.getElementById('qr-btn').classList.remove('hidden');
                 }
-                conn.on('close', () => alert("Host Disconnected"));
+                
+                conn.on('close', () => alert("Ведучий від'єднався"));
             });
         }
 
         function copyLink() {
             document.getElementById('share-link').select();
             document.execCommand('copy');
-            alert("Link Copied!");
+            alert("Посилання скопійовано!");
         }
     </script>
 </body>
