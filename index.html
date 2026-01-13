@@ -36,7 +36,6 @@
             margin: 0; padding: 0;
             background-color: var(--color-bg);
             color: var(--color-text);
-            /* Requested: Montserrat, Large font */
             font-family: 'Montserrat', sans-serif;
             font-size: 18px; 
             overflow: hidden; 
@@ -87,7 +86,6 @@
         }
         button.menu-btn:active { transform: scale(0.98); }
         
-        /* Secondary actions (Gray/Red based on context, here simple gray for utility) */
         button.menu-btn.secondary { 
             background: white; 
             color: var(--color-text); 
@@ -137,7 +135,7 @@
             display: flex; justify-content: center; align-items: flex-start;
             padding: 1rem 0.5rem 6rem 0.5rem; /* Space for toolbar */
             position: relative;
-            background: #e0e0e0; /* Distinct from card bg */
+            background: #e0e0e0;
         }
 
         .canvas-wrapper {
@@ -186,7 +184,7 @@
         /* Bottom Toolbar */
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
-            background-color: var(--color-primary); /* Blue toolbar */
+            background-color: var(--color-primary);
             display: flex; justify-content: space-around; align-items: center;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
@@ -207,9 +205,8 @@
         .tool-btn span { font-size: 0.75rem; opacity: 0.9; margin-top: 4px; font-weight: 400; }
         .tool-btn:disabled { opacity: 0.4; }
         
-        .tool-btn.danger { color: #ffcccc; } /* Light red for contrast on blue */
+        .tool-btn.danger { color: #ffcccc; }
 
-        /* Utility specific for typography request */
         .section-divider {
             border-bottom: 1px solid var(--color-border); 
             padding-bottom: 1rem; margin-bottom: 1rem;
@@ -361,6 +358,8 @@
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
+        // MARK MEMORY: Store strokes per page. Key: pageNum, Value: Array of [x0, y0, x1, y1] (normalized)
+        let pageMarks = {};
 
         // Init Libraries
         lucide.createIcons();
@@ -417,13 +416,17 @@
                 // Reset drawing style after resize
                 drawCtx.lineCap = 'round';
                 drawCtx.lineJoin = 'round';
-                drawCtx.lineWidth = 4; // Slightly thicker for visibility
-                drawCtx.strokeStyle = '#b80000'; // Accent color for drawing
+                drawCtx.lineWidth = 4;
+                drawCtx.strokeStyle = '#b80000'; 
 
                 const renderContext = { canvasContext: pdfCtx, viewport: viewport };
                 
                 page.render(renderContext).promise.then(() => {
                     pageRendering = false;
+                    
+                    // REPLAY STORED MARKS FOR THIS PAGE
+                    redrawStoredLines(num);
+
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
@@ -443,7 +446,7 @@
             else renderPage(num);
         }
 
-        // --- DRAWING LOGIC ---
+        // --- DRAWING LOGIC (ENHANCED) ---
         
         function initDrawingListeners() {
             // Mouse Events
@@ -462,11 +465,16 @@
             drawCanvas.addEventListener('touchend', stopDrawing);
         }
 
+        // FIX: Calculate position based on Internal Resolution vs Displayed CSS Size
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
+            // Scale factors (Bitmap Pixels / Screen Pixels)
+            const scaleX = drawCanvas.width / rect.width;
+            const scaleY = drawCanvas.height / rect.height;
+
             return {
-                x: (e.clientX - rect.left),
-                y: (e.clientY - rect.top)
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
             };
         }
 
@@ -503,11 +511,17 @@
             drawCtx.lineTo(x1, y1);
             drawCtx.stroke();
 
-            // Broadcast Normalized
+            // Broadcast & Save
             if (emit && isLeader) {
+                const normCoords = [x0 / w, y0 / h, x1 / w, y1 / h];
+                
+                // SAVE TO MEMORY
+                if (!pageMarks[pageNum]) pageMarks[pageNum] = [];
+                pageMarks[pageNum].push(normCoords);
+
                 broadcast({
                     type: 'DRAW',
-                    coords: [x0 / w, y0 / h, x1 / w, y1 / h]
+                    coords: normCoords
                 });
             }
         }
@@ -516,16 +530,47 @@
             const w = drawCanvas.width;
             const h = drawCanvas.height;
             
+            // SAVE TO MEMORY (Viewer Side)
+            if (!pageMarks[pageNum]) pageMarks[pageNum] = [];
+            pageMarks[pageNum].push([nx0, ny0, nx1, ny1]);
+
             drawCtx.beginPath();
             drawCtx.moveTo(nx0 * w, ny0 * h);
             drawCtx.lineTo(nx1 * w, ny1 * h);
             drawCtx.stroke();
         }
 
+        function redrawStoredLines(pNum) {
+            if (!pageMarks[pNum]) return;
+            
+            const w = drawCanvas.width;
+            const h = drawCanvas.height;
+            
+            // Set style again just in case
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = 4;
+            drawCtx.strokeStyle = '#b80000';
+
+            drawCtx.beginPath();
+            pageMarks[pNum].forEach(line => {
+                // line is [nx0, ny0, nx1, ny1]
+                drawCtx.moveTo(line[0] * w, line[1] * h);
+                drawCtx.lineTo(line[2] * w, line[3] * h);
+            });
+            drawCtx.stroke();
+        }
+
         function clearDrawings(emit) {
+            // Clear visual canvas
             drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            if (emit && isLeader) {
-                broadcast({ type: 'CLEAR' });
+            
+            // If explicit Eraser action (emit=true), clear MEMORY for this page
+            if (emit) {
+                pageMarks[pageNum] = [];
+                if (isLeader) {
+                    broadcast({ type: 'CLEAR' });
+                }
             }
         }
 
@@ -534,7 +579,7 @@
         function onPrevPage() {
             if (!pdfDoc || pageNum <= 1) return;
             pageNum--;
-            clearDrawings(true); 
+            clearDrawings(false); // Just clear visual, don't erase memory
             queueRenderPage(pageNum);
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
@@ -542,7 +587,7 @@
         function onNextPage() {
             if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
             pageNum++;
-            clearDrawings(true); 
+            clearDrawings(false); // Just clear visual, don't erase memory
             queueRenderPage(pageNum);
             if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
         }
@@ -761,6 +806,8 @@
 
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
+                        // On page turn, we just clear visual. 
+                        // The 'renderPage' triggered by 'queueRenderPage' will call 'redrawStoredLines'
                         clearDrawings(false); 
                         if(pdfDoc) queueRenderPage(pageNum);
                     }
@@ -770,7 +817,7 @@
                     }
 
                     if (data.type === 'CLEAR') {
-                        clearDrawings(false);
+                        clearDrawings(true); // True = Erase memory too
                     }
                 });
 
