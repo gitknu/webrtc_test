@@ -19,14 +19,15 @@
 
     <style>
         :root {
-            /* Palette Configuration */
+            /* Functional Color Palette */
             --color-bg: #f4f4f4;
             --color-card: #ffffff;
+            
+            /* ATTENTION COLORS */
+            --color-attention-high: #b80000; /* Red: Main Actions, Listener */
+            --color-attention-med: #0b5394;  /* Blue: Secondary Actions, Speaker, Inputs */
+            
             --color-text: #000000;
-            
-            --color-primary: #0b5394; /* Blue */
-            --color-accent: #b80000;  /* Red */
-            
             --color-border: #cccccc;
             --shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
@@ -38,13 +39,13 @@
             background-color: var(--color-bg);
             color: var(--color-text);
             font-family: 'Montserrat', sans-serif;
-            font-size: 16px; /* Base size */
+            font-size: 16px;
             overflow: hidden; 
             height: 100vh;
             display: flex; flex-direction: column;
         }
 
-        /* --- UI OVERLAYS (Start Menu / Lobby) --- */
+        /* --- UI OVERLAYS --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(244, 244, 244, 1); z-index: 200;
@@ -60,7 +61,7 @@
             text-align: center; 
             max-width: 500px; width: 100%;
             box-shadow: var(--shadow);
-            border: 1px solid var(--color-border);
+            border: 2px solid var(--color-border);
             display: flex; flex-direction: column; gap: 1.5rem;
         }
         
@@ -73,11 +74,11 @@
             font-size: 1.5rem;
         }
 
-        p { margin: 0; font-size: 1rem; color: #555; }
+        p { margin: 0; font-size: 1rem; color: var(--color-text); }
         
         /* --- ROLE BUTTONS --- */
         #role-menu {
-            display: flex; flex-direction: column; gap: 20px;
+            display: flex; flex-direction: column; gap: 25px;
             width: 100%; max-width: 500px;
             height: 100%; justify-content: center;
         }
@@ -86,84 +87,104 @@
             flex: 1; min-height: 200px; max-height: 40vh;
             border: none; border-radius: 1.5rem;
             font-family: 'Montserrat', sans-serif;
-            font-size: 1.8rem; font-weight: 700;
+            font-size: 2rem; font-weight: 800;
             color: white; cursor: pointer;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
             transition: transform 0.1s;
+            text-transform: uppercase;
         }
 
         .role-btn:active { transform: scale(0.98); }
-        .role-listener { background-color: var(--color-primary); }
-        .role-speaker { background-color: var(--color-accent); }
         
-        /* --- INPUTS & BUTTONS --- */
-        button.menu-btn {
-            background: var(--color-primary); 
+        /* RED: Listener (Main Role) */
+        .role-listener { 
+            background-color: var(--color-attention-high); 
+            border: 2px solid var(--color-attention-high);
+        }
+        
+        /* BLUE: Speaker (Secondary Role) */
+        .role-speaker { 
+            background-color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med);
+        }
+        
+        /* --- BUTTONS & INPUTS --- */
+        
+        /* Primary Action (RED) - Single most important button per page */
+        button.btn-primary {
+            background: var(--color-attention-high); 
             color: white; border: none;
             padding: 1.2rem; 
-            font-size: 1.1rem; 
+            font-size: 1.2rem; 
             font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3);
+            text-transform: uppercase;
+        }
+        button.btn-primary:active { transform: scale(0.98); }
+        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Secondary Action (BLUE/WHITE) - Options, Inputs, Back */
+        button.btn-secondary { 
+            background: white; 
+            color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med); 
+            padding: 1rem;
+            font-size: 1rem;
             font-weight: 600;
             border-radius: 0.8rem;
             cursor: pointer; width: 100%;
             display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-family: 'Montserrat', sans-serif;
         }
-        button.menu-btn:active { transform: scale(0.98); background: #084278; }
-        
-        button.menu-btn.secondary { 
-            background: white; 
-            color: var(--color-text); 
-            border: 2px solid var(--color-border); 
-            box-shadow: none;
-        }
-        
-        button.menu-btn.danger { background: var(--color-accent); }
+        button.btn-secondary:active { background: #f0f8ff; }
 
+        /* Inputs (BLUE Focus) */
         input[type="text"] {
             padding: 1.2rem; width: 100%;
             background: #fff; 
-            border: 2px solid var(--color-border);
-            color: var(--color-text); 
+            border: 2px solid var(--color-attention-med); /* Blue border for inputs */
+            color: var(--color-attention-med); 
             border-radius: 0.8rem; 
             outline: none;
-            font-size: 1.1rem; text-align: center;
+            font-size: 1.2rem; text-align: center;
             font-family: 'Montserrat', sans-serif;
-            font-weight: 500;
+            font-weight: 600;
         }
-        input[type="text"]:focus { border-color: var(--color-primary); }
+        input[type="text"]::placeholder { color: #88a; font-weight: 400; }
         input[type="file"] { display: none; }
 
-        /* --- QR SCANNER CUSTOMIZATION (Overrides) --- */
+        /* --- QR SCANNER CUSTOMIZATION --- */
         #reader {
             width: 100%;
             border-radius: 1rem;
             overflow: hidden;
             background: #000;
+            border: 3px solid var(--color-attention-med); /* Blue frame for camera */
         }
         #reader video { object-fit: cover; border-radius: 1rem; }
         
-        /* Force Library Buttons to match App Theme */
+        /* Force Library Button to be Red (High Attention Action) */
         #reader button {
-            background-color: var(--color-primary) !important;
+            background-color: var(--color-attention-high) !important;
             color: white !important;
             border: none !important;
-            padding: 1.2rem !important;
-            border-radius: 0.8rem !important;
+            padding: 1rem !important;
+            border-radius: 0.5rem !important;
             font-family: 'Montserrat', sans-serif !important;
-            font-size: 1.1rem !important;
             font-weight: 600 !important;
-            cursor: pointer !important;
             margin-top: 10px !important;
             width: 100% !important;
         }
         
-        /* Hide Useless Scanner Elements */
-        #html5-qrcode-button-camera-stop { display: none !important; }
-        #html5-qrcode-anchor-scan-type-change { display: none !important; }
+        #html5-qrcode-button-camera-stop, 
+        #html5-qrcode-anchor-scan-type-change, 
         #reader__dashboard_section_csr span { display: none !important; }
 
         /* --- PDF VIEWER --- */
@@ -189,15 +210,14 @@
             pointer-events: none; 
         }
 
-        /* Touch Zones */
-        .touch-zone { position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10; }
+        .touch-zone { position: fixed; top: 0; bottom: 85px; width: 15%; z-index: 10; }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        /* Floating Controls */
+        /* Floating QR Button - BLUE (Information) */
         #qr-btn {
             position: fixed; top: 1.5rem; right: 1.5rem;
-            background-color: var(--color-primary); 
+            background-color: var(--color-attention-med); 
             border: none; color: white; padding: 1rem; border-radius: 50%;
             cursor: pointer; z-index: 50;
             display: flex; align-items: center; justify-content: center;
@@ -212,13 +232,13 @@
         }
         #qr-code-box { 
             background: white; padding: 2rem; border-radius: 1.5rem; 
-            box-shadow: var(--shadow); border: 1px solid var(--color-border);
+            box-shadow: var(--shadow); border: 2px solid var(--color-attention-med);
         }
 
-        /* Toolbar */
+        /* Toolbar - BLUE (Navigation) */
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 85px;
-            background-color: var(--color-primary);
+            background-color: var(--color-attention-med);
             display: flex; justify-content: space-around; align-items: center;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
@@ -234,13 +254,16 @@
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
         .tool-btn span { font-size: 0.8rem; margin-top: 4px; font-weight: 500; }
-        .tool-btn.danger { color: #ffcccc; }
+        
+        /* Eraser - RED (Destructive/Important) */
+        .tool-btn.danger { color: #ffcccc; } 
+        .tool-btn.danger svg { stroke: #ff9999; }
 
         .file-label {
-            font-size: 1rem; color: var(--color-primary); 
+            font-size: 1rem; color: var(--color-attention-med); 
             word-break: break-all; font-weight: 600;
-            padding: 10px; border: 1px dashed var(--color-primary);
-            border-radius: 0.5rem; background: rgba(11, 83, 148, 0.05);
+            padding: 15px; border: 2px dashed var(--color-attention-med);
+            border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
         }
         
         /* List */
@@ -253,10 +276,10 @@
         .client-row { 
             display: flex; justify-content: space-between; 
             padding: 1rem; border-bottom: 1px solid #eee; 
-            font-size: 1rem; font-weight: 500;
+            font-size: 1rem; font-weight: 600;
         }
-        .status-ready { color: var(--color-primary); font-weight: 700; }
-        .status-wait { color: var(--color-accent); }
+        .status-ready { color: var(--color-attention-high); font-weight: 700; } /* Ready = Red (Attention) */
+        .status-wait { color: var(--color-attention-med); }
 
     </style>
 </head>
@@ -267,80 +290,85 @@
         
         <!-- STEP 1: ROLE SELECTION -->
         <div id="role-menu">
+            <!-- RED: Main Role -->
             <button class="role-btn role-listener" onclick="setupListener()">
-                <i data-lucide="ear" width="64" height="64"></i>
+                <i data-lucide="ear" width="80" height="80"></i>
                 Я СЛУХАЧ
             </button>
+            <!-- BLUE: Secondary Role -->
             <button class="role-btn role-speaker" onclick="setupSpeaker()">
-                <i data-lucide="mic-2" width="64" height="64"></i>
+                <i data-lucide="mic-2" width="80" height="80"></i>
                 Я ВЕДУЧИЙ
             </button>
         </div>
 
         <!-- STEP 2A: LISTENER SETUP -->
         <div id="listener-menu" class="card hidden">
-            <button class="menu-btn secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+            <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
             </button>
 
             <h3>Підключення</h3>
             
-            <div id="reader"></div> <!-- Camera View -->
+            <div id="reader"></div> <!-- Camera -->
             
             <p>Наведіть камеру на QR код</p>
             <p style="font-size: 0.9rem; opacity: 0.6;">або</p>
 
+            <!-- BLUE: Input -->
             <input type="text" id="join-input" placeholder="Введіть ID вручну">
-            <button class="menu-btn" onclick="joinGame()">
+            
+            <!-- RED: Main Join Action -->
+            <button class="btn-primary" onclick="joinGame()">
                 <i data-lucide="link"></i> ПРИЄДНАТИСЬ
             </button>
         </div>
 
         <!-- STEP 2B: SPEAKER SETUP -->
         <div id="speaker-menu" class="card hidden">
-            <button class="menu-btn secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+            <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
             </button>
             
             <h3>Кабінет Ведучого</h3>
             
             <!-- QR & ID -->
-            <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 1px solid #eee; border-radius: 10px;"></div>
+            <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 2px solid var(--color-attention-med); border-radius: 10px;"></div>
             
-            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 0.9rem; padding: 0.8rem; background: #f0f0f0;">
+            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 1rem; padding: 0.8rem; background: #f0f0f0;">
 
             <!-- Users -->
             <div id="client-list">
                 <div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>
             </div>
 
-            <!-- File Upload -->
+            <!-- File Upload (BLUE - Secondary) -->
             <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
                 <div id="file-name" class="file-label hidden"></div>
-                <button class="menu-btn secondary" onclick="document.getElementById('file-upload').click()">
+                <button class="btn-secondary" onclick="document.getElementById('file-upload').click()">
                     <i data-lucide="upload"></i> ОБРАТИ СВІЙ ФАЙЛ
                 </button>
                 <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
             </div>
 
-            <!-- Start Button -->
-            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn" disabled style="background-color: var(--color-accent);">
+            <!-- Start Button (RED - Main Action) -->
+            <button id="btn-start-sync" onclick="startDistribution()" class="btn-primary" disabled>
                 <i data-lucide="play"></i> ПОЧАТИ ВИСТУП
             </button>
             
-            <div id="sync-status" style="display:none; color: var(--color-primary); font-weight:600; font-size: 1.1rem;">
+            <div id="sync-status" style="display:none; color: var(--color-attention-high); font-weight:700; font-size: 1.2rem;">
                 <i data-lucide="loader-2" class="spin"></i> Завантаження...
             </div>
         </div>
 
         <!-- LOADING SCREEN -->
-        <div id="loading-menu" class="card hidden" style="justify-content: center;">
-            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-primary); width:64px; height:64px;"></i>
+        <div id="loading-menu" class="card hidden" style="justify-content: center; border-color: var(--color-attention-med);">
+            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-attention-med); width:64px; height:64px;"></i>
             <h3 id="loading-msg">З'єднання...</h3>
-            <div id="progress-bar-container" style="width: 100%; background: #ddd; height: 12px; border-radius: 6px; overflow: hidden; display: none;">
-                <div id="progress-bar-fill" style="height: 100%; background: var(--color-primary); width: 0%; transition: width 0.2s;"></div>
+            <div id="progress-bar-container" style="width: 100%; background: #ddd; height: 16px; border-radius: 8px; overflow: hidden; display: none;">
+                <div id="progress-bar-fill" style="height: 100%; background: var(--color-attention-med); width: 0%; transition: width 0.2s;"></div>
             </div>
-            <div id="status-text" style="font-size:1rem; color:#666;"></div>
+            <div id="status-text" style="font-size:1.1rem; color:#666; font-weight: 600;"></div>
         </div>
     </div>
 
@@ -351,7 +379,7 @@
         <div id="qr-code-box" onclick="event.stopPropagation()">
             <h3 style="margin-bottom: 20px;">Поділитися</h3>
             <div id="qrcode-modal-tgt"></div>
-            <button class="menu-btn secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
+            <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
         </div>
     </div>
 
@@ -671,8 +699,8 @@
                 document.getElementById("qr-container").innerHTML = "";
                 document.getElementById("qrcode-modal-tgt").innerHTML = "";
                 
-                new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150 });
-                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250 });
+                new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150, colorDark: "#0b5394" });
+                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250, colorDark: "#0b5394" });
                 
                 document.getElementById('qr-btn').classList.remove('hidden');
                 document.getElementById('btn-start-sync').disabled = false;
@@ -835,7 +863,7 @@
                     document.getElementById('ui-layer').classList.add('hidden');
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
-                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250 });
+                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#0b5394" });
                     document.getElementById('qr-btn').classList.remove('hidden');
                     toggleQR();
                 }
