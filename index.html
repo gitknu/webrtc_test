@@ -10,13 +10,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        :root { --primary: #2196F3; --dark: #333; --light: #f4f4f4; --success: #4CAF50; --warning: #FF9800; --error: #f44336; }
+        :root { --primary: #2196F3; --dark: #333; --light: #f4f4f4; --success: #4CAF50; --warning: #FF9800; }
         body { font-family: sans-serif; margin: 0; background: var(--dark); color: white; overflow: hidden; }
         
         /* UI OVERLAYS */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.98); z-index: 100; /* Darker background to hide PDF while syncing */
+            background: rgba(0,0,0,0.98); z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         .card {
@@ -32,7 +32,7 @@
             transition: opacity 0.3s;
         }
         button:hover { opacity: 0.9; }
-        button:disabled { background: #999; cursor: not-allowed; }
+        button:disabled { background: #ccc; cursor: not-allowed; opacity: 0.7; }
         button.upload-btn { background: var(--warning); }
         button.start-btn { background: var(--success); font-weight: bold; font-size: 1.1em; }
         
@@ -56,14 +56,14 @@
         .control-btn { background: transparent; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-weight: bold; margin: 0; }
         #page-indicator { font-family: monospace; font-size: 1.2em; }
         
-        /* STATUS */
-        #sync-status { margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; color: var(--dark); display: none; }
-        #progress-bar-container { width: 100%; background: #ddd; height: 15px; border-radius: 8px; margin-top: 10px; display: none; overflow: hidden; }
-        #progress-bar-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.1s; }
-        
-        .status-row { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #ddd; font-size: 0.9em; }
+        /* STATUS LIST */
+        .client-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; font-size: 0.9em; }
         .status-ready { color: var(--success); font-weight: bold; }
         .status-wait { color: var(--warning); }
+        
+        /* PROGRESS BAR */
+        #progress-bar-container { width: 100%; background: #ddd; height: 12px; border-radius: 6px; margin-top: 10px; display: none; overflow: hidden; }
+        #progress-bar-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.1s; }
     </style>
 </head>
 <body>
@@ -99,16 +99,15 @@
             <input type="text" id="share-link" readonly onclick="this.select()">
             <button onclick="copyLink()" style="margin-bottom: 15px;">Copy Link</button>
             
-            <div id="client-list" style="text-align: left; max-height: 100px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; padding: 5px; margin-bottom: 10px;">
-                <div style="text-align:center; color:#999; font-size:0.8em;">No clients connected</div>
+            <div id="client-list" style="text-align: left; max-height: 150px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; margin-bottom: 10px;">
+                <div style="padding:10px; text-align:center; color:#999;">Waiting for connections...</div>
             </div>
 
             <button id="btn-start-sync" onclick="startDistribution()" class="start-btn" disabled>Distribute & Start</button>
             
-            <div id="sync-status">
-                <div style="font-weight:bold; color: var(--primary);">Syncing...</div>
-                <div id="sync-progress-text" style="font-size: 0.8em; margin: 5px 0;">Sending Data...</div>
-                <div style="font-size: 0.7em; color: #666;">Controls locked until everyone confirms receipt.</div>
+            <div id="sync-status" style="display:none; color: var(--primary); font-weight:bold; margin-top:10px;">
+                Distribution in progress...<br>
+                <span style="font-size:0.7em; color:#666; font-weight:normal;">Do not close window.</span>
             </div>
         </div>
 
@@ -138,7 +137,7 @@
     <script>
         // --- CONFIG ---
         const DEFAULT_PDF_URL = 'slides.pdf'; 
-        const CHUNK_SIZE = 16 * 1024; // 16KB Safe Chunk
+        const CHUNK_SIZE = 16 * 1024; // 16KB (Safe limit for all browsers)
         
         // --- GLOBALS ---
         let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
@@ -147,21 +146,21 @@
         const ctx = canvas.getContext('2d');
         
         let peer = null;
-        let connections = []; // Array of { id, conn, ready }
+        let connections = []; // [{ id, conn, ready }]
         let isLeader = false;
         let transferInProgress = false;
 
-        // Data Storage
         let presentationMode = 'default';
-        let leaderPdfBlob = null; // Blob for Leader
+        let leaderPdfBlob = null; // File object
 
-        // Viewer Receiving Storage
+        // Viewer Receiving Variables
         let incomingChunks = []; 
         let incomingSize = 0;
         let totalExpectedSize = 0;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+        // Auto-join from URL
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             if (params.get('host')) {
@@ -174,7 +173,6 @@
         // --- PDF ENGINE ---
         async function renderPdf(source) {
             try {
-                // source can be URL string or Blob URL
                 const loadingTask = pdfjsLib.getDocument(source);
                 pdfDoc = await loadingTask.promise;
                 updatePageCount();
@@ -182,7 +180,7 @@
                 return true;
             } catch (e) {
                 console.error(e);
-                alert("PDF Load Error: " + e.message);
+                alert("PDF Error: " + e.message);
                 return false;
             }
         }
@@ -226,7 +224,7 @@
         // --- LEADER LOGIC ---
         function handleFileSelect(input) {
             if (input.files[0]) {
-                leaderPdfBlob = input.files[0]; // Store as File/Blob
+                leaderPdfBlob = input.files[0];
                 document.getElementById('file-name').innerText = leaderPdfBlob.name;
                 initLeader('custom');
             }
@@ -236,6 +234,7 @@
             presentationMode = mode;
             isLeader = true;
             
+            // Preview locally
             if (mode === 'default') renderPdf(DEFAULT_PDF_URL);
             else if (leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
             else return;
@@ -244,7 +243,7 @@
             peer.on('open', id => {
                 document.getElementById('start-menu').classList.add('hidden');
                 document.getElementById('leader-menu').classList.remove('hidden');
-                document.getElementById('mode-display').innerText = mode === 'custom' ? "Custom File" : "Default File";
+                document.getElementById('mode-display').innerText = mode === 'custom' ? "Custom File" : "Default URL";
                 
                 const url = window.location.href.split('?')[0] + '?host=' + id;
                 document.getElementById('share-link').value = url;
@@ -256,9 +255,9 @@
             peer.on('connection', conn => {
                 const client = { id: conn.peer, conn: conn, ready: false };
                 connections.push(client);
-                renderClientList();
+                updateClientList();
 
-                // Handle Late Joiners (After sync started)
+                // If joining late, sync immediately
                 if (transferInProgress) {
                     conn.on('open', () => syncSingleClient(client));
                 }
@@ -266,37 +265,34 @@
                 conn.on('data', data => {
                     if (data.type === 'ACK_READY') {
                         client.ready = true;
-                        renderClientList();
+                        updateClientList();
                         checkGlobalSync();
-                    }
-                    if (data.type === 'ERROR') {
-                        alert(`Client ${conn.peer} failed: ${data.msg}`);
                     }
                 });
 
                 conn.on('close', () => {
                     connections = connections.filter(c => c.conn !== conn);
-                    renderClientList();
+                    updateClientList();
                     checkGlobalSync();
                 });
             });
         }
 
-        function renderClientList() {
+        function updateClientList() {
             const list = document.getElementById('client-list');
             if(connections.length === 0) {
-                list.innerHTML = '<div style="text-align:center; color:#999; font-size:0.8em;">No clients connected</div>';
+                list.innerHTML = '<div style="padding:10px; text-align:center; color:#999;">Waiting for connections...</div>';
                 return;
             }
             list.innerHTML = connections.map(c => `
-                <div class="status-row">
+                <div class="client-row">
                     <span>User ${c.id.substr(0,4)}</span>
                     <span class="${c.ready ? 'status-ready' : 'status-wait'}">
-                        ${c.ready ? 'READY' : 'WAITING'}
+                        ${c.ready ? 'READY' : 'PENDING'}
                     </span>
                 </div>
             `).join('');
-            document.getElementById('connection-count').innerText = `${connections.length} connected`;
+            document.getElementById('btn-start-sync').innerText = `Distribute & Start (${connections.length})`;
         }
 
         function startDistribution() {
@@ -306,75 +302,91 @@
             document.getElementById('btn-start-sync').style.display = 'none';
             document.getElementById('sync-status').style.display = 'block';
 
-            // Start sync for everyone
             connections.forEach(c => syncSingleClient(c));
         }
 
         function syncSingleClient(client) {
             client.ready = false;
-            renderClientList();
-
-            // Send INIT
+            updateClientList();
+            
+            // 1. Send Config
             client.conn.send({ type: 'INIT', mode: presentationMode });
 
             if (presentationMode === 'default') {
-                // Default is instant, client just loads URL
+                // Default mode doesn't need binary transfer
             } else {
-                // Send Binary Blob
-                sendFile(client.conn, leaderPdfBlob);
+                // Custom Mode: Send File
+                sendFileRaw(client.conn, leaderPdfBlob);
             }
         }
 
-        function sendFile(conn, blob) {
+        // --- THE FIX: RAW BINARY TRANSFER ---
+        function sendFileRaw(conn, blob) {
+            // 1. Send Header (JSON)
             conn.send({ type: 'FILE_HEADER', size: blob.size });
 
-            const reader = new FileReader();
+            // 2. Send Chunks (Raw ArrayBuffers)
+            // We use standard FileReader to read chunks
             let offset = 0;
+            const reader = new FileReader();
 
-            reader.onload = (e) => {
+            reader.onload = function(e) {
+                // Check flow control (don't overflow the buffer)
                 if (conn.dataChannel.bufferedAmount > 16 * 1024 * 1024) {
-                     // Safety break if buffer is insane, though flow control handles this
-                     console.warn("Buffer full");
+                    console.warn("Buffer Backpressure - waiting");
+                    setTimeout(() => {
+                        // Retry sending this chunk
+                        conn.send(e.target.result); 
+                        nextSlice();
+                    }, 100);
+                    return;
+                }
+
+                // Send Raw Binary (This is the critical fix)
+                try {
+                    conn.send(e.target.result); 
+                } catch(err) {
+                    console.error("Send Error", err);
                 }
                 
-                // Send raw Uint8Array wrapped in object
-                const chunk = new Uint8Array(e.target.result);
-                conn.send({ type: 'FILE_CHUNK', payload: chunk });
-
-                offset += CHUNK_SIZE;
-                if (offset < blob.size) {
-                    readNextSlice();
-                } else {
-                    conn.send({ type: 'FILE_END' });
-                }
+                offset += e.target.result.byteLength;
+                nextSlice();
             };
 
-            function readNextSlice() {
-                // Flow control
-                if (conn.dataChannel.bufferedAmount > 64 * 1024) {
-                    setTimeout(readNextSlice, 50);
+            function nextSlice() {
+                if (offset < blob.size) {
+                    // Simple recursive loop with minimal delay
+                    // Check bufferedAmount to prevent 'stuck' state
+                    if (conn.dataChannel.bufferedAmount > 64 * 1024) {
+                        setTimeout(nextSlice, 10);
+                    } else {
+                        const slice = blob.slice(offset, offset + CHUNK_SIZE);
+                        reader.readAsArrayBuffer(slice);
+                    }
                 } else {
-                    const slice = blob.slice(offset, offset + CHUNK_SIZE);
-                    reader.readAsArrayBuffer(slice);
+                    // 3. Send End (JSON)
+                    conn.send({ type: 'FILE_END' });
                 }
             }
-
-            readNextSlice();
+            
+            // Start
+            nextSlice();
         }
 
         function checkGlobalSync() {
-            // Only unlock if transfer started AND everyone is ready
             if (transferInProgress && connections.length > 0 && connections.every(c => c.ready)) {
+                // Everyone has the file: Unlock
                 document.getElementById('ui-layer').classList.add('hidden');
                 document.getElementById('leader-controls').style.display = 'flex';
                 broadcast({ type: 'PAGE', value: pageNum });
             }
         }
 
+
         // --- VIEWER LOGIC ---
         function joinGame(id) {
             const hostId = id || document.getElementById('join-input').value;
-            if (!hostId) return alert("No ID");
+            if (!hostId) return alert("ID Required");
 
             document.getElementById('start-menu').classList.add('hidden');
             document.getElementById('loading-menu').classList.remove('hidden');
@@ -384,70 +396,57 @@
                 const conn = peer.connect(hostId, { reliable: true });
 
                 conn.on('open', () => {
-                    document.getElementById('loading-msg').innerText = "Connected. Waiting for file...";
+                    document.getElementById('loading-msg').innerText = "Connected. Waiting for host...";
                 });
 
                 conn.on('data', async data => {
-                    // 1. INIT
+                    
+                    // --- RAW BINARY HANDLING (The Fix) ---
+                    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+                        // It's a file chunk!
+                        incomingChunks.push(data);
+                        incomingSize += data.byteLength || data.length;
+                        
+                        const pct = Math.floor((incomingSize / totalExpectedSize) * 100);
+                        updateProgress(pct);
+                        return; // Stop processing, it's not JSON
+                    }
+
+                    // --- JSON CONTROL MESSAGES ---
                     if (data.type === 'INIT') {
                         if (data.mode === 'default') {
-                            document.getElementById('loading-msg').innerText = "Loading Default PDF...";
-                            const success = await renderPdf(DEFAULT_PDF_URL);
-                            if(success) {
+                            document.getElementById('loading-msg').innerText = "Loading Default...";
+                            const ok = await renderPdf(DEFAULT_PDF_URL);
+                            if(ok) {
                                 conn.send({ type: 'ACK_READY' });
                                 document.getElementById('ui-layer').classList.add('hidden');
                             }
                         } else {
+                            // Prepare for file
                             document.getElementById('loading-msg').innerText = "Downloading...";
                             document.getElementById('progress-bar-container').style.display = 'block';
-                            // Reset buffers
                             incomingChunks = [];
                             incomingSize = 0;
                         }
                     }
 
-                    // 2. HEADER
                     if (data.type === 'FILE_HEADER') {
                         totalExpectedSize = data.size;
                         updateProgress(0);
                     }
 
-                    // 3. CHUNK (The Fix: Push to array, don't use offsets)
-                    if (data.type === 'FILE_CHUNK') {
-                        // data.payload is a Uint8Array or ArrayBuffer from PeerJS
-                        const chunk = new Uint8Array(data.payload); 
-                        incomingChunks.push(chunk);
-                        incomingSize += chunk.byteLength;
-                        
-                        const pct = Math.floor((incomingSize / totalExpectedSize) * 100);
-                        updateProgress(pct);
-                    }
-
-                    // 4. END (The Fix: Blob Assembly)
                     if (data.type === 'FILE_END') {
-                        document.getElementById('loading-msg').innerText = "Assembling PDF...";
-                        
-                        // Create Blob from chunks. This is 100% safe against 0-byte offset errors.
+                        document.getElementById('loading-msg').innerText = "Building PDF...";
                         const blob = new Blob(incomingChunks, { type: 'application/pdf' });
+                        const url = URL.createObjectURL(blob);
                         
-                        if (blob.size === 0) {
-                            conn.send({ type: 'ERROR', msg: 'Zero Byte File' });
-                            return alert("Error: Received empty file");
-                        }
-
-                        // Create URL
-                        const blobUrl = URL.createObjectURL(blob);
-                        
-                        const success = await renderPdf(blobUrl);
-                        if (success) {
-                            conn.send({ type: 'ACK_READY' }); // Unlocks Leader
+                        const ok = await renderPdf(url);
+                        if (ok) {
+                            conn.send({ type: 'ACK_READY' });
                             document.getElementById('ui-layer').classList.add('hidden');
-                        } else {
-                            conn.send({ type: 'ERROR', msg: 'PDF Parse Failed' });
                         }
                     }
 
-                    // 5. SYNC
                     if (data.type === 'PAGE') {
                         pageNum = data.value;
                         if(pdfDoc) queueRenderPage(pageNum);
