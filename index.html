@@ -210,6 +210,11 @@
             width: 100%;
         }
 
+        /* Fullscreen Mode Adjustments */
+        body.fullscreen-mode #toolbar { display: none !important; }
+        body.fullscreen-mode #pdf-container { padding-bottom: 0 !important; background: black; }
+        body.fullscreen-mode #fs-controls { display: block !important; }
+
         .canvas-wrapper {
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
@@ -260,7 +265,6 @@
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
             background-color: var(--color-attention-med);
-            /* Center elements with gap instead of space-around to prevent overflow */
             display: flex; justify-content: center; align-items: center;
             gap: 4px; /* Tight gap */
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
@@ -291,6 +295,9 @@
         /* Active Hand State (Listener) */
         .hand-active { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); }
         .hand-active i { fill: var(--color-hand); }
+        
+        /* FS Control Buttons */
+        .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
@@ -312,6 +319,45 @@
         }
         .status-ready { color: var(--color-attention-high); font-weight: 700; }
         .status-wait { color: var(--color-attention-med); }
+
+        /* --- FULL SCREEN CONTROLS LAYER --- */
+        #fs-controls {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Let clicks pass through to content mainly */
+            z-index: 150;
+        }
+        
+        /* Separated Elements */
+        #fs-exit {
+            position: absolute; top: 20px; right: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            border: none; border-radius: 50%; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        
+        #fs-page-info {
+            position: absolute; top: 20px; left: 20px;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem;
+        }
+
+        #fs-hand {
+            position: absolute; bottom: 30px; right: 20px;
+            pointer-events: auto;
+            background: white; color: #aaa;
+            border: 2px solid #ccc;
+            border-radius: 50%; width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+        #fs-hand:active { transform: scale(0.95); }
 
     </style>
 </head>
@@ -421,6 +467,19 @@
     <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
     <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
+    <!-- Full Screen Controls (Listener Only) -->
+    <div id="fs-controls">
+        <div id="fs-page-info">
+            <span id="fs_page_num">--</span> / <span id="fs_page_count">--</span>
+        </div>
+        <button id="fs-exit" onclick="exitFullScreen()">
+            <i data-lucide="minimize" width="24" height="24"></i>
+        </button>
+        <button id="fs-hand" onclick="toggleHand()">
+            <i data-lucide="hand" width="32" height="32"></i>
+        </button>
+    </div>
+
     <!-- PDF Container -->
     <div id="pdf-container">
         <!-- Hand Overlay (Speaker View) -->
@@ -453,6 +512,12 @@
         <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
             <i data-lucide="hand" width="24" height="24"></i>
             <span>Рука</span>
+        </button>
+
+        <!-- Listener: Full Screen -->
+        <button class="tool-btn lst-only hidden" onclick="enterFullScreen()">
+            <i data-lucide="maximize" width="24" height="24"></i>
+            <span>Full</span>
         </button>
 
         <!-- Speaker: Prev -->
@@ -531,6 +596,28 @@
             initDrawingListeners();
         };
 
+        // --- FULL SCREEN LOGIC ---
+        function enterFullScreen() {
+            document.body.classList.add('fullscreen-mode');
+            const el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        }
+
+        function exitFullScreen() {
+            document.body.classList.remove('fullscreen-mode');
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.body.classList.remove('fullscreen-mode');
+            }
+        });
+
         // --- UI FLOW & TOOLBAR ---
         function updateToolbarForRole() {
             const spkBtns = document.querySelectorAll('.spk-only');
@@ -539,13 +626,11 @@
             if (isLeader) {
                 spkBtns.forEach(el => el.classList.remove('hidden'));
                 lstBtns.forEach(el => el.classList.add('hidden'));
-                // Disable touch zones for listeners? No, speaker needs them.
                 document.getElementById('zone-prev').style.display = 'block';
                 document.getElementById('zone-next').style.display = 'block';
             } else {
                 spkBtns.forEach(el => el.classList.add('hidden'));
                 lstBtns.forEach(el => el.classList.remove('hidden'));
-                // Remove Prev/Next touch zones for listeners (view only)
                 document.getElementById('zone-prev').style.display = 'none';
                 document.getElementById('zone-next').style.display = 'none';
             }
@@ -600,7 +685,9 @@
             try {
                 const loadingTask = pdfjsLib.getDocument(source);
                 pdfDoc = await loadingTask.promise;
-                document.getElementById('page_count').textContent = pdfDoc.numPages;
+                const num = pdfDoc.numPages;
+                document.getElementById('page_count').textContent = num;
+                document.getElementById('fs_page_count').textContent = num; // FS sync
                 renderPage(pageNum);
                 return true;
             } catch (e) {
@@ -635,6 +722,7 @@
             });
 
             document.getElementById('page_num').textContent = num;
+            document.getElementById('fs_page_num').textContent = num; // FS sync
             
             // Only update buttons if leader (listeners don't have these buttons)
             if(isLeader) {
@@ -653,10 +741,15 @@
             if (!hostConnection) return;
             myHandRaised = !myHandRaised;
             
-            // Update UI
+            // Update UI (Toolbar)
             const btn = document.getElementById('btn-hand');
             if (myHandRaised) btn.classList.add('hand-active');
             else btn.classList.remove('hand-active');
+
+            // Update UI (FullScreen)
+            const fsBtn = document.getElementById('fs-hand');
+            if (myHandRaised) fsBtn.classList.add('fs-btn-active');
+            else fsBtn.classList.remove('fs-btn-active');
             
             // Send to Host
             hostConnection.send({ type: 'HAND', value: myHandRaised });
