@@ -26,6 +26,7 @@
             /* ATTENTION COLORS */
             --color-attention-high: #b80000; /* Red: Main Actions, Listener */
             --color-attention-med: #0b5394;  /* Blue: Secondary Actions, Speaker, Inputs */
+            --color-hand: #f59e0b; /* Amber for Hand Raise */
             
             --color-text: #000000;
             --color-border: #cccccc;
@@ -223,6 +224,21 @@
             pointer-events: none; 
         }
 
+        /* HAND OVERLAY (Speaker View) */
+        #hand-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--color-hand);
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 50;
+            font-weight: 700; color: #000;
+        }
+        .bounce { animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
         .touch-zone { position: fixed; top: 0; bottom: 85px; width: 15%; z-index: 10; }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
@@ -255,11 +271,16 @@
             background: none; border: none; color: white; cursor: pointer;
             padding: 0.5rem; border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 60px; /* Slightly smaller to fit 6 items if needed */
+            min-width: 55px; /* Fit more buttons */
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.75rem; margin-top: 4px; font-weight: 500; }
+        .tool-btn span { font-size: 0.7rem; margin-top: 4px; font-weight: 500; }
+        
         .tool-btn.danger { color: #ffcccc; } 
+        
+        /* Active Hand State (Listener) */
+        .hand-active { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); }
+        .hand-active i { fill: var(--color-hand); }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
@@ -386,12 +407,18 @@
         </div>
     </div>
 
-    <!-- Invisible Click Zones -->
+    <!-- Invisible Click Zones (Speaker Only technically, but kept for logic) -->
     <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
     <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
     <!-- PDF Container -->
     <div id="pdf-container">
+        <!-- Hand Overlay (Speaker View) -->
+        <div id="hand-overlay" class="hidden bounce">
+            <i data-lucide="hand" width="24" height="24" fill="#f59e0b" stroke="none"></i>
+            <span id="hand-count">0</span>
+        </div>
+
         <div class="canvas-wrapper">
             <canvas id="the-canvas"></canvas>
             <canvas id="draw-canvas"></canvas>
@@ -400,33 +427,51 @@
 
     <!-- Toolbar -->
     <div id="toolbar">
+        <!-- Common -->
         <button class="tool-btn" onclick="toggleQR()">
-            <i data-lucide="qr-code" width="28" height="28"></i>
+            <i data-lucide="qr-code" width="24" height="24"></i>
             <span>QR</span>
         </button>
 
-        <button class="tool-btn" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="28" height="28"></i>
+        <!-- Speaker: Users Count -->
+        <div class="tool-btn spk-only hidden" id="user-count-display">
+            <i data-lucide="users" width="24" height="24"></i>
+            <span id="user-count-val">0</span>
+        </div>
+
+        <!-- Listener: Raise Hand -->
+        <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
+            <i data-lucide="hand" width="24" height="24"></i>
+            <span>Рука</span>
+        </button>
+
+        <!-- Speaker: Prev -->
+        <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
+            <i data-lucide="arrow-left" width="24" height="24"></i>
             <span>Назад</span>
         </button>
 
-        <button class="tool-btn danger" id="eraser-btn" onclick="clearDrawings(true)" style="display:none;">
-            <i data-lucide="eraser" width="28" height="28"></i>
-            <span>Стерти</span>
-        </button>
-
+        <!-- Common: Page Info -->
         <div id="page-info">
             <span id="page_num">--</span> / <span id="page_count">--</span>
         </div>
 
+        <!-- Speaker: Next -->
+        <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
+            <i data-lucide="arrow-right" width="24" height="24"></i>
+            <span>Далі</span>
+        </button>
+
+        <!-- Common: Rotate -->
         <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="28" height="28"></i>
+            <i data-lucide="rotate-cw" width="24" height="24"></i>
             <span>Оберт</span>
         </button>
 
-        <button class="tool-btn" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="28" height="28"></i>
-            <span>Далі</span>
+        <!-- Speaker: Clear -->
+        <button class="tool-btn danger spk-only hidden" id="eraser-btn" onclick="clearDrawings(true)">
+            <i data-lucide="eraser" width="24" height="24"></i>
+            <span>Стерти</span>
         </button>
     </div>
 
@@ -445,10 +490,14 @@
         const container = document.getElementById('pdf-container');
         
         let peer = null;
-        let connections = []; 
+        let connections = []; // { id, conn, ready, handRaised }
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
+        
+        // Listener specific globals
+        let myHandRaised = false;
+        let hostConnection = null;
         
         let incomingChunks = []; 
         let incomingSize = 0;
@@ -472,18 +521,33 @@
             initDrawingListeners();
         };
 
-        // --- UI FLOW ---
+        // --- UI FLOW & TOOLBAR ---
+        function updateToolbarForRole() {
+            const spkBtns = document.querySelectorAll('.spk-only');
+            const lstBtns = document.querySelectorAll('.lst-only');
+            
+            if (isLeader) {
+                spkBtns.forEach(el => el.classList.remove('hidden'));
+                lstBtns.forEach(el => el.classList.add('hidden'));
+                // Disable touch zones for listeners? No, speaker needs them.
+                document.getElementById('zone-prev').style.display = 'block';
+                document.getElementById('zone-next').style.display = 'block';
+            } else {
+                spkBtns.forEach(el => el.classList.add('hidden'));
+                lstBtns.forEach(el => el.classList.remove('hidden'));
+                // Remove Prev/Next touch zones for listeners (view only)
+                document.getElementById('zone-prev').style.display = 'none';
+                document.getElementById('zone-next').style.display = 'none';
+            }
+        }
 
         function setupListener() {
             document.getElementById('role-menu').classList.add('hidden');
             document.getElementById('listener-menu').classList.remove('hidden');
-            
-            // Start scanner
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", 
-                { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
-                false
-            );
+            isLeader = false;
+            updateToolbarForRole();
+
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
 
@@ -561,13 +625,42 @@
             });
 
             document.getElementById('page_num').textContent = num;
-            document.getElementById('prev').disabled = num <= 1;
-            document.getElementById('next').disabled = num >= pdfDoc.numPages;
+            
+            // Only update buttons if leader (listeners don't have these buttons)
+            if(isLeader) {
+                document.getElementById('prev').disabled = num <= 1;
+                document.getElementById('next').disabled = num >= pdfDoc.numPages;
+            }
             container.scrollTop = 0; 
         }
 
         function queueRenderPage(num) {
             if (pageRendering) pageNumPending = num; else renderPage(num);
+        }
+
+        // --- HANDLER LOGIC ---
+        function toggleHand() {
+            if (!hostConnection) return;
+            myHandRaised = !myHandRaised;
+            
+            // Update UI
+            const btn = document.getElementById('btn-hand');
+            if (myHandRaised) btn.classList.add('hand-active');
+            else btn.classList.remove('hand-active');
+            
+            // Send to Host
+            hostConnection.send({ type: 'HAND', value: myHandRaised });
+        }
+
+        function updateHandOverlay() {
+            if (!isLeader) return;
+            const count = connections.filter(c => c.handRaised).length;
+            const overlay = document.getElementById('hand-overlay');
+            const counter = document.getElementById('hand-count');
+            
+            counter.innerText = count;
+            if (count > 0) overlay.classList.remove('hidden');
+            else overlay.classList.add('hidden');
         }
 
         // --- DRAWING ---
@@ -691,9 +784,9 @@
 
         function initLeader() {
             isLeader = true;
+            updateToolbarForRole();
             document.getElementById('speaker-menu').classList.remove('hidden');
             drawCanvas.style.pointerEvents = 'auto';
-            document.getElementById('eraser-btn').style.display = 'flex'; 
 
             peer = new Peer();
             peer.on('open', id => {
@@ -711,7 +804,7 @@
             });
 
             peer.on('connection', conn => {
-                const client = { id: conn.peer, conn: conn, ready: false };
+                const client = { id: conn.peer, conn: conn, ready: false, handRaised: false };
                 connections.push(client);
                 updateClientList();
 
@@ -725,16 +818,25 @@
                         updateClientList();
                         checkGlobalSync();
                     }
+                    if (data.type === 'HAND') {
+                        client.handRaised = data.value;
+                        updateHandOverlay();
+                    }
                 });
 
                 conn.on('close', () => {
                     connections = connections.filter(c => c.conn !== conn);
                     updateClientList();
+                    updateHandOverlay();
                 });
             });
         }
 
         function updateClientList() {
+            // Update Toolbar Count
+            document.getElementById('user-count-val').innerText = connections.length;
+            
+            // Update Menu List
             const list = document.getElementById('client-list');
             if(connections.length === 0) {
                 list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
@@ -819,11 +921,15 @@
 
             document.getElementById('listener-menu').classList.add('hidden');
             document.getElementById('loading-menu').classList.remove('hidden');
+            isLeader = false;
+            updateToolbarForRole();
+
             if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
 
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
+                hostConnection = conn;
 
                 conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
 
@@ -868,8 +974,6 @@
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
-                    
-                    // Removed automatic QR toggle here
                 }
                 conn.on('close', () => alert("Ведучий від'єднався"));
             });
