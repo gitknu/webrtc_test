@@ -660,7 +660,6 @@
             if (params.get('p')) {
                 pageNum = parseInt(params.get('p')) || 1;
                 // Attempt to render default PDF instantly for "Offline mode" experience
-                // If the host uses a custom file, this will just be a placeholder until sync
                 renderPdf(DEFAULT_PDF_URL).catch(() => {});
             }
 
@@ -774,7 +773,6 @@
         }
 
         function renderPage(num) {
-            // Safety clamp
             if(pdfDoc && num > pdfDoc.numPages) num = pdfDoc.numPages;
             if(num < 1) num = 1;
             pageNum = num;
@@ -1013,7 +1011,7 @@
             }, 1000);
 
             peer.on('connection', conn => {
-                // 1. Remove duplicate IDs to fix counter
+                // 1. Remove duplicate IDs
                 connections = connections.filter(c => c.id !== conn.peer);
                 
                 const client = { id: conn.peer, conn: conn, ready: false, handRaised: false };
@@ -1021,7 +1019,7 @@
                 updateClientList();
 
                 conn.on('open', () => {
-                    // 2. LATE JOIN LOGIC: If presentation already started, sync immediately
+                    // 2. LATE JOIN LOGIC
                     if (transferInProgress) {
                         syncSingleClient(client);
                     }
@@ -1032,18 +1030,15 @@
                         client.ready = true;
                         updateClientList();
                         
-                        // 3. FORCE STATE UPDATE: If late joiner is now ready, send them to current page
+                        // 3. FORCE STATE UPDATE
                         if(transferInProgress) {
                             conn.send({ type: 'PAGE', value: pageNum });
-                            // Send all lines for current page
                             if(pageMarks[pageNum]) {
                                 pageMarks[pageNum].forEach(line => {
                                    conn.send({ type: 'DRAW', coords: line }); 
                                 });
                             }
                         }
-                        
-                        checkGlobalSync();
                     }
                     if (data.type === 'HAND') {
                         client.handRaised = data.value;
@@ -1085,10 +1080,11 @@
             if(leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
             else renderPdf(DEFAULT_PDF_URL);
 
-            // Allow starting even with 0 users (so late joiners can come)
             transferInProgress = true;
-            document.getElementById('btn-start-sync').style.display = 'none';
-            document.getElementById('sync-status').style.display = 'block';
+            
+            // --- FIX: Hide UI Immediately for Speaker ---
+            // Allows speaker to control slides even with 0 users
+            document.getElementById('ui-layer').classList.add('hidden');
             
             // Sync anyone currently connected
             connections.forEach(c => syncSingleClient(c));
@@ -1127,14 +1123,6 @@
             nextSlice();
         }
 
-        function checkGlobalSync() {
-            // Initial hide of UI layer when first batch is ready
-            // Late joiners will hide their own UI layer upon ACK_READY
-            if (transferInProgress && connections.length > 0 && connections.every(c => c.ready)) {
-                document.getElementById('ui-layer').classList.add('hidden');
-            }
-        }
-
         function broadcast(msg) {
             connections.forEach(c => { if(c.conn.open) c.conn.send(msg); });
         }
@@ -1143,7 +1131,6 @@
             const hostId = id || document.getElementById('join-input').value;
             if (!hostId) return alert("Потрібен ID або QR");
             
-            // Offline Mode check: if page param exists, ensure we are on that page visually
             if(pageParam) pageNum = parseInt(pageParam);
 
             document.getElementById('listener-menu').classList.add('hidden');
@@ -1198,17 +1185,12 @@
                 function finishSetup() {
                     conn.send({ type: 'ACK_READY' });
                     document.getElementById('ui-layer').classList.add('hidden');
-                    // Reset QR to current host url so they can share it too
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                 }
                 
-                // Heartbeat / Reconnect check for client
-                conn.on('close', () => {
-                   // alert("Зв'язок втрачено");
-                   // Optional: attempt reconnect or just let them view offline
-                });
+                conn.on('close', () => { /* Handle disconnect */ });
             });
         }
     </script>
