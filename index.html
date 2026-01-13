@@ -166,12 +166,13 @@
             color: var(--color-attention-med); 
             border-radius: 0.8rem; 
             outline: none;
-            font-size: 1.1rem; text-align: center;
+            font-size: 1.5rem; text-align: center;
             font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
+            font-weight: 800;
+            letter-spacing: 2px;
             flex-shrink: 0;
         }
-        input[type="text"]::placeholder { color: #88a; font-weight: 400; }
+        input[type="text"]::placeholder { color: #88a; font-weight: 400; font-size: 1.1rem; letter-spacing: 0; }
         input[type="file"] { display: none; }
 
         /* --- QR SCANNER CUSTOMIZATION --- */
@@ -468,6 +469,23 @@
         .status-ready { color: var(--color-attention-high); font-weight: 700; }
         .status-wait { color: var(--color-attention-med); }
 
+        /* ID Display Style */
+        .id-display {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--color-attention-med);
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px dashed var(--color-attention-med);
+            letter-spacing: 2px;
+            margin-top: 10px;
+            user-select: text;
+        }
+        .id-label {
+            font-size: 0.8rem; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: -5px;
+        }
+
     </style>
 </head>
 <body>
@@ -508,8 +526,8 @@
             
             <div style="width:100%; height:1px; background:#eee;"></div>
 
-            <!-- BLUE: Input -->
-            <input type="text" id="join-input" placeholder="Або введіть ID вручну">
+            <!-- BLUE: Input with ID Formatting -->
+            <input type="text" id="join-input" placeholder="000 000 000" inputmode="numeric">
             
             <!-- RED: Main Join Action -->
             <button class="btn-primary" onclick="joinGame()">
@@ -528,7 +546,10 @@
             <!-- QR & ID -->
             <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 2px solid var(--color-attention-med); border-radius: 10px;"></div>
             
-            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 0.9rem; padding: 0.8rem; background: #f0f0f0;">
+            <div style="display:flex; flex-direction:column; gap:5px; width:100%;">
+                <span class="id-label">Код доступу</span>
+                <div id="meeting-id-display" class="id-display">...</div>
+            </div>
 
             <!-- Users -->
             <div id="client-list">
@@ -578,6 +599,7 @@
         <div id="qr-code-box" onclick="event.stopPropagation()">
             <h3 style="margin-bottom: 15px;">Поділитися (Сторінка <span id="qr-page-num">1</span>)</h3>
             <div id="qrcode-modal-tgt"></div>
+            <div id="qr-modal-id" class="id-display" style="font-size:1.5rem; margin-top:15px;"></div>
             <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
         </div>
     </div>
@@ -698,6 +720,7 @@
         
         // --- !!! CONFIGURATION: EDIT THIS VALUE !!! ---
         const LANDSCAPE_ROTATION_DEG = 0; 
+        const APP_PREFIX = "synchro_pdf_"; // Prefix to ensure unique namespace on PeerJS server
         
         const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
         const CHUNK_SIZE = 16 * 1024;
@@ -716,7 +739,7 @@
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
-        let myId = null; // Store Peer ID
+        let myIdRaw = null; // Store Short Numeric ID
         
         // Listener specific globals
         let myHandRaised = false;
@@ -735,6 +758,12 @@
 
         lucide.createIcons();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- INPUT MASKING (XXX XXX XXX) ---
+        document.getElementById('join-input').addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})/);
+            e.target.value = !x[2] ? x[1] : x[1] + ' ' + x[2] + (x[3] ? ' ' + x[3] : '');
+        });
 
         window.onload = () => {
             document.documentElement.style.setProperty('--landscape-rotation', LANDSCAPE_ROTATION_DEG + 'deg');
@@ -1066,17 +1095,27 @@
             modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
         }
         
-        // --- QR GENERATION ---
+        // --- QR & ID GENERATION ---
+        function formatId(id) {
+            // Formats 123456789 into 123 456 789
+            if (!id) return "...";
+            return id.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+        }
+
         function updateQRCodes() {
-            if(!myId) return;
-            // Build URL with current PAGE
+            if(!myIdRaw) return;
+            // Build URL with raw numeric ID
             const baseUrl = window.location.href.split('?')[0];
-            const fullUrl = `${baseUrl}?host=${myId}&p=${pageNum}`;
+            const fullUrl = `${baseUrl}?host=${myIdRaw}&p=${pageNum}`;
             
             document.getElementById("qr-container").innerHTML = "";
             document.getElementById("qrcode-modal-tgt").innerHTML = "";
             document.getElementById("qr-page-num").innerText = pageNum;
-            document.getElementById('share-link').value = fullUrl;
+            
+            // Display Formatted Short ID
+            const fmtId = formatId(myIdRaw);
+            document.getElementById('meeting-id-display').innerText = fmtId;
+            document.getElementById('qr-modal-id').innerText = fmtId;
 
             new QRCode(document.getElementById("qr-container"), { text: fullUrl, width: 150, height: 150, colorDark: "#000000" });
             new QRCode(document.getElementById("qrcode-modal-tgt"), { text: fullUrl, width: 250, height: 250, colorDark: "#000000" });
@@ -1113,17 +1152,40 @@
 
         // --- PEER JS LOGIC ---
 
+        function generateShortId() {
+            // Generate a 9 digit number string
+            const min = 100000000;
+            const max = 999999999;
+            return Math.floor(Math.random() * (max - min + 1) + min).toString();
+        }
+
         function initLeader() {
             isLeader = true;
             updateToolbarForRole();
             document.getElementById('speaker-menu').classList.remove('hidden');
             drawCanvas.style.pointerEvents = 'auto';
 
-            peer = new Peer();
+            // Generate a Short Numeric ID
+            myIdRaw = generateShortId();
+            // Prefix it for PeerJS to avoid global collision on public server
+            const peerJsId = APP_PREFIX + myIdRaw;
+
+            peer = new Peer(peerJsId);
+
             peer.on('open', id => {
-                myId = id;
                 updateQRCodes();
                 document.getElementById('btn-start-sync').disabled = false;
+            });
+
+            // If ID is taken (rare with 9 digits but possible), retry
+            peer.on('error', (err) => {
+                if(err.type === 'unavailable-id') {
+                    console.log("ID collision, retrying...");
+                    peer.destroy();
+                    setTimeout(initLeader, 200);
+                } else {
+                    alert("Connection Error: " + err.type);
+                }
             });
 
             // Heartbeat & Pruning (Every 1s)
@@ -1254,9 +1316,18 @@
         }
 
         function joinGame(id, pageParam) {
-            const hostId = id || document.getElementById('join-input').value;
+            let hostId = id || document.getElementById('join-input').value;
+            
+            // Strip spaces from input for connection
+            hostId = hostId.replace(/\s/g, '');
+
             if (!hostId) return alert("Потрібен ID або QR");
             
+            // Add Prefix if it's a numeric ID (manual entry or QR with raw number)
+            if (!hostId.startsWith(APP_PREFIX)) {
+                hostId = APP_PREFIX + hostId;
+            }
+
             if(pageParam) pageNum = parseInt(pageParam);
 
             // Hide main menu, show loading
@@ -1280,6 +1351,14 @@
                 hostConnection = conn;
 
                 conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
+                
+                // Error handling for "Peer not found"
+                peer.on('error', (err) => {
+                   if(err.type === 'peer-unavailable') {
+                       alert('Ведучого з таким ID не знайдено');
+                       location.reload();
+                   }
+                });
 
                 conn.on('data', async data => {
                     if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
@@ -1323,7 +1402,13 @@
                     exitOfflineMode();
                     
                     document.getElementById('ui-layer').classList.add('hidden');
-                    const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
+                    
+                    // Clean URL for sharing
+                    const cleanHost = hostId.replace(APP_PREFIX, '');
+                    const currentUrl = window.location.href.split('?')[0] + '?host=' + cleanHost;
+                    
+                    document.getElementById('qr-modal-id').innerText = formatId(cleanHost);
+                    
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                 }
