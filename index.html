@@ -584,6 +584,21 @@
             </div>
             <div id="status-text" style="font-size:1.1rem; color:#666; font-weight: 600;"></div>
         </div>
+
+        <!-- DISCONNECT SCREEN -->
+        <div id="disconnect-menu" class="card hidden" style="border-color: var(--color-attention-high); justify-content: center; align-items: center;">
+            <i data-lucide="wifi-off" style="width:72px; height:72px; color: var(--color-attention-high); margin-bottom: 10px;"></i>
+            <h3>Зв'язок втрачено</h3>
+            <p style="margin: 15px 0; color: #555;">Ведучий відключився або виникла помилка мережі.</p>
+            
+            <button class="btn-primary" onclick="stayOffline()">
+                <i data-lucide="book-open"></i> ЧИТАТИ САМОСТІЙНО
+            </button>
+            
+            <button class="btn-secondary" onclick="location.reload()" style="margin-top: 10px;">
+                <i data-lucide="refresh-cw"></i> ПЕРЕПІДКЛЮЧИТИСЬ
+            </button>
+        </div>
     </div>
 
     <!-- 2. MAIN VIEWER -->
@@ -1142,6 +1157,11 @@
             document.getElementById('zone-next').style.display = 'none';
         }
 
+        function stayOffline() {
+            document.getElementById('disconnect-menu').classList.add('hidden');
+            enterOfflineMode();
+        }
+
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
@@ -1413,7 +1433,16 @@
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                 }
                 
-                conn.on('close', () => { /* Handle disconnect */ });
+                conn.on('close', () => { 
+                    // SHOW DISCONNECT SCREEN
+                    document.getElementById('ui-layer').classList.remove('hidden');
+                    document.getElementById('loading-menu').classList.add('hidden');
+                    document.getElementById('listener-menu').classList.add('hidden');
+                    
+                    const discMenu = document.getElementById('disconnect-menu');
+                    discMenu.classList.remove('hidden');
+                    lucide.createIcons(); // Refresh icons for this menu
+                });
             });
         }
     </script>
