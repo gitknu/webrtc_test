@@ -1,5 +1,3 @@
---- START OF FILE index (30).html ---
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -221,13 +219,10 @@
         body.fullscreen-mode #pdf-container { padding-bottom: 0 !important; background: black; }
         body.fullscreen-mode #fs-controls { display: block !important; }
 
-        /* --- FIX: Display inline-block ensures wrapper hugs PDF content exactly --- */
         .canvas-wrapper {
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             background: white;
-            display: inline-block; /* IMPORTANT: Wraps strictly around canvas dimensions */
-            line-height: 0; /* Prevents ghost vertical spacing */
         }
         
         canvas#the-canvas { display: block; max-width: 100%; height: auto; }
