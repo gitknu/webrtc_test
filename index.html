@@ -985,21 +985,65 @@
                 new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250, colorDark: "#000000" });
                 
                 document.getElementById('btn-start-sync').disabled = false;
+
+                // --- 1. PERIODIC CONNECTION CLEANUP (User Count Fix) ---
+                setInterval(() => {
+                    if (!isLeader) return;
+                    // Filter dead connections immediately
+                    const initialCount = connections.length;
+                    connections = connections.filter(c => c.conn.open);
+                    
+                    if (connections.length !== initialCount) {
+                        updateClientList();
+                        updateHandOverlay();
+                    }
+                }, 1000);
             });
 
             peer.on('connection', conn => {
+                // --- 4. PREVENT DUPLICATES ---
+                // Remove any existing connection with the same Peer ID before adding the new one
+                connections = connections.filter(c => c.id !== conn.peer);
+
                 const client = { id: conn.peer, conn: conn, ready: false, handRaised: false };
                 connections.push(client);
                 updateClientList();
 
+                // --- 2. ENHANCED LATE JOIN LOGIC ---
+                // If presentation is already live, try to sync immediately
                 if (transferInProgress) {
-                    conn.on('open', () => syncSingleClient(client));
+                    const initLateJoin = () => {
+                         syncSingleClient(client);
+                    };
+
+                    if (conn.open) {
+                        initLateJoin();
+                    } else {
+                        conn.on('open', initLateJoin);
+                    }
+                } else {
+                    // Regular pre-start connection
+                    // We don't sync yet, just wait for startDistribution
                 }
 
                 conn.on('data', data => {
                     if (data.type === 'ACK_READY') {
                         client.ready = true;
                         updateClientList();
+                        
+                        // --- 3. IMMEDIATE STATE UPDATE FOR LATE JOINERS ---
+                        // If we are already live, send current page and drawings immediately
+                        if (transferInProgress) {
+                            if(client.conn.open) {
+                                client.conn.send({ type: 'PAGE', value: pageNum });
+                                if (pageMarks[pageNum] && pageMarks[pageNum].length > 0) {
+                                    pageMarks[pageNum].forEach(line => {
+                                         client.conn.send({ type: 'DRAW', coords: line });
+                                    });
+                                }
+                            }
+                        }
+                        
                         checkGlobalSync();
                     }
                     if (data.type === 'HAND') {
@@ -1061,9 +1105,13 @@
             updateClientList();
             
             const mode = leaderPdfBlob ? 'custom' : 'default';
-            client.conn.send({ type: 'INIT', mode: mode });
-
-            if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
+            // Wait a tiny bit to ensure channel is writable for late joiners
+            setTimeout(() => {
+                if(client.conn.open) {
+                    client.conn.send({ type: 'INIT', mode: mode });
+                    if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
+                }
+            }, 100);
         }
 
         function sendFileRaw(conn, blob) {
@@ -1089,6 +1137,7 @@
         }
 
         function checkGlobalSync() {
+            // Only hide UI automatically for the initial batch start
             if (transferInProgress && connections.length > 0 && connections.every(c => c.ready)) {
                 document.getElementById('ui-layer').classList.add('hidden');
                 broadcast({ type: 'PAGE', value: pageNum });
