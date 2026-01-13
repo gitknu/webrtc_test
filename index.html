@@ -261,43 +261,109 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* --- COMPACT TOOLBAR --- */
+        /* --- TOOLBAR & ROTATION LOGIC --- */
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
             background-color: var(--color-attention-med);
             display: flex; justify-content: center; align-items: center;
-            gap: 4px; /* Tight gap */
+            gap: 2px;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
-            padding-left: 2px; padding-right: 2px;
         }
 
         #page-info { 
             color: white; font-size: 1rem; font-weight: 600; 
             min-width: 45px; text-align: center; 
-            white-space: nowrap; 
-            margin: 0 2px;
+            white-space: nowrap; margin: 0 2px;
+            transition: transform 0.3s ease;
         }
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 4px 2px; /* Minimized padding */
-            border-radius: 0.5rem;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 44px; /* Compact width */
+            padding: 0;
+            display: flex; align-items: center; justify-content: center;
             flex-shrink: 1;
+            /* Default Portrait Width - Auto to fit text */
+            min-width: 44px;
+            height: 100%;
         }
-        .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; }
-        
+        .tool-btn:active .btn-inner { background-color: rgba(255,255,255,0.2); border-radius: 8px; }
+
+        /* Inner container for rotation */
+        .btn-inner {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 4px;
+            transition: transform 0.3s ease;
+        }
+
+        .btn-inner span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; white-space: nowrap; }
         .tool-btn.danger { color: #ffcccc; } 
         
-        /* Active Hand State (Listener) */
-        .hand-active { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); }
+        .hand-active .btn-inner { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); border-radius: 8px; }
         .hand-active i { fill: var(--color-hand); }
+
+        /* --- ROTATION MODES --- */
         
-        /* FS Control Buttons */
+        /* Landscape Mode (active when PDF width > height) */
+        body.landscape-mode .tool-btn {
+            /* Fix width to save space in horizontal toolbar, because buttons are 'tall' visually */
+            width: 50px; 
+            min-width: 0;
+        }
+
+        body.landscape-mode .btn-inner {
+            /* Rotate -90deg */
+            transform: rotate(-90deg);
+            /* Force the rotated element to be the size of the toolbar height for flex centering */
+            width: 75px; 
+            height: 50px; 
+            /* Text should be visually 'below' icon. 
+               In DOM: Icon is Top, Text is Bottom.
+               Rotated -90: Icon is Left, Text is Right.
+               User holds phone sideways (Top is Left): Icon is Top, Text is Bottom. Perfect. */
+        }
+
+        body.landscape-mode #page-info { transform: rotate(-90deg); }
+
+        /* --- FULL SCREEN CONTROLS LAYER --- */
+        #fs-controls {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 150;
+        }
+        
+        #fs-exit, #fs-hand, #fs-page-info { pointer-events: auto; transition: transform 0.3s ease; }
+
+        #fs-exit {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            border: none; border-radius: 50%; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        
+        #fs-page-info {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem;
+        }
+
+        #fs-hand {
+            position: absolute; bottom: 30px; right: 20px;
+            background: white; color: #aaa;
+            border: 2px solid #ccc;
+            border-radius: 50%; width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        #fs-hand:active { transform: scale(0.95); }
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
+
+        /* Rotate FS Controls in Landscape */
+        body.landscape-mode #fs-exit { transform: rotate(-90deg); }
+        body.landscape-mode #fs-hand { transform: rotate(-90deg); }
+        body.landscape-mode #fs-page-info { transform: rotate(-90deg); origin: center; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
@@ -320,64 +386,6 @@
         .status-ready { color: var(--color-attention-high); font-weight: 700; }
         .status-wait { color: var(--color-attention-med); }
 
-        /* --- FULL SCREEN CONTROLS LAYER --- */
-        #fs-controls {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Let clicks pass through to content mainly */
-            z-index: 150;
-        }
-        
-        /* Separated Elements */
-        #fs-exit {
-            position: absolute; top: 20px; right: 20px;
-            pointer-events: auto;
-            background: rgba(0, 0, 0, 0.6); color: white;
-            border: none; border-radius: 50%; width: 44px; height: 44px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
-        
-        #fs-page-info {
-            position: absolute; top: 20px; left: 20px;
-            pointer-events: auto;
-            background: rgba(0, 0, 0, 0.6); color: white;
-            padding: 8px 16px; border-radius: 20px;
-            font-weight: 700; font-size: 0.9rem;
-        }
-
-        #fs-hand {
-            position: absolute; bottom: 30px; right: 20px;
-            pointer-events: auto;
-            background: white; color: #aaa;
-            border: 2px solid #ccc;
-            border-radius: 50%; width: 64px; height: 64px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-        }
-        #fs-hand:active { transform: scale(0.95); }
-
-        /* --- ORIENTATION ROTATION LOGIC --- */
-        /* Smooth transition for rotations */
-        .tool-btn > *, 
-        #fs-exit > *, 
-        #fs-hand > *, 
-        #page-info > span {
-            transition: transform 0.3s ease;
-        }
-
-        /* Landscape Mode: Rotate icons -90deg so they look upright when phone is held sideways */
-        body.landscape-layout .tool-btn > *,
-        body.landscape-layout #fs-exit > *,
-        body.landscape-layout #fs-hand > * {
-            transform: rotate(-90deg);
-        }
-        
-        /* Note: We generally don't rotate page numbers in toolbar as it fits poorly, 
-           but can rotate FS info if needed. For now, just buttons as requested. */
-
     </style>
 </head>
 <body>
@@ -389,13 +397,17 @@
         <div id="role-menu">
             <!-- RED: Main Role -->
             <button class="role-btn role-listener" onclick="setupListener()">
-                <i data-lucide="ear" width="72" height="72"></i>
-                Я СЛУХАЧ
+                <div class="btn-inner">
+                    <i data-lucide="ear" width="72" height="72"></i>
+                    Я СЛУХАЧ
+                </div>
             </button>
             <!-- BLUE: Secondary Role -->
             <button class="role-btn role-speaker" onclick="setupSpeaker()">
-                <i data-lucide="mic-2" width="72" height="72"></i>
-                Я ВЕДУЧИЙ
+                <div class="btn-inner">
+                    <i data-lucide="mic-2" width="72" height="72"></i>
+                    Я ВЕДУЧИЙ
+                </div>
             </button>
         </div>
 
@@ -517,32 +529,42 @@
     <div id="toolbar">
         <!-- Common -->
         <button class="tool-btn" onclick="toggleQR()">
-            <i data-lucide="qr-code" width="24" height="24"></i>
-            <span>QR</span>
+            <div class="btn-inner">
+                <i data-lucide="qr-code" width="24" height="24"></i>
+                <span>QR</span>
+            </div>
         </button>
 
         <!-- Speaker: Users Count -->
         <div class="tool-btn spk-only hidden" id="user-count-display">
-            <i data-lucide="users" width="24" height="24"></i>
-            <span id="user-count-val">0</span>
+            <div class="btn-inner">
+                <i data-lucide="users" width="24" height="24"></i>
+                <span id="user-count-val">0</span>
+            </div>
         </div>
 
         <!-- Listener: Raise Hand -->
         <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
-            <i data-lucide="hand" width="24" height="24"></i>
-            <span>Рука</span>
+            <div class="btn-inner">
+                <i data-lucide="hand" width="24" height="24"></i>
+                <span>Рука</span>
+            </div>
         </button>
 
         <!-- Listener: Full Screen -->
         <button class="tool-btn lst-only hidden" onclick="enterFullScreen()">
-            <i data-lucide="maximize" width="24" height="24"></i>
-            <span>Full</span>
+            <div class="btn-inner">
+                <i data-lucide="maximize" width="24" height="24"></i>
+                <span>Full</span>
+            </div>
         </button>
 
         <!-- Speaker: Prev -->
         <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="24" height="24"></i>
-            <span>Назад</span>
+            <div class="btn-inner">
+                <i data-lucide="arrow-left" width="24" height="24"></i>
+                <span>Назад</span>
+            </div>
         </button>
 
         <!-- Common: Page Info -->
@@ -552,20 +574,26 @@
 
         <!-- Speaker: Next -->
         <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="24" height="24"></i>
-            <span>Далі</span>
+            <div class="btn-inner">
+                <i data-lucide="arrow-right" width="24" height="24"></i>
+                <span>Далі</span>
+            </div>
         </button>
 
         <!-- Common: Rotate -->
         <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="24" height="24"></i>
-            <span>Оберт</span>
+            <div class="btn-inner">
+                <i data-lucide="rotate-cw" width="24" height="24"></i>
+                <span>Оберт</span>
+            </div>
         </button>
 
         <!-- Speaker: Clear -->
         <button class="tool-btn danger spk-only hidden" id="eraser-btn" onclick="clearDrawings(true)">
-            <i data-lucide="eraser" width="24" height="24"></i>
-            <span>Стерти</span>
+            <div class="btn-inner">
+                <i data-lucide="eraser" width="24" height="24"></i>
+                <span>Стерти</span>
+            </div>
         </button>
     </div>
 
@@ -722,11 +750,12 @@
                 const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
                 
                 // --- ORIENTATION CHECK ---
-                // If width > height, it's landscape. Rotate buttons -90deg so user can hold phone sideways.
+                // If the viewport width is greater than height, it's a "landscape" visual
+                // This usually implies user should hold phone sideways.
                 if (viewport.width > viewport.height) {
-                    document.body.classList.add('landscape-layout');
+                    document.body.classList.add('landscape-mode');
                 } else {
-                    document.body.classList.remove('landscape-layout');
+                    document.body.classList.remove('landscape-mode');
                 }
                 
                 pdfCanvas.height = viewport.height;
