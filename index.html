@@ -286,6 +286,8 @@
             /* Default Portrait Width - Auto to fit text */
             min-width: 44px;
             height: 100%;
+            /* Allow content to overlap slightly in landscape if needed */
+            position: relative; 
         }
         .tool-btn:active .btn-inner { background-color: rgba(255,255,255,0.2); border-radius: 8px; }
 
@@ -294,6 +296,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 4px;
             transition: transform 0.3s ease;
+            width: 100%; height: 100%;
         }
 
         .btn-inner span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; white-space: nowrap; }
@@ -306,24 +309,29 @@
         
         /* Landscape Mode (active when PDF width > height) */
         body.landscape-mode .tool-btn {
-            /* Fix width to save space in horizontal toolbar, because buttons are 'tall' visually */
+            /* Constrain slot width so buttons are spaced evenly along the "side" */
             width: 50px; 
-            min-width: 0;
+            min-width: 50px;
         }
 
         body.landscape-mode .btn-inner {
-            /* Rotate -90deg */
-            transform: rotate(-90deg);
-            /* Force the rotated element to be the size of the toolbar height for flex centering */
+            /* Rotate 90deg Clockwise (Standard Landscape - Top-Left Phone) */
+            transform: rotate(90deg);
+            
+            /* Swap Dimensions for Layout */
+            /* We want visual width to be 50px (Slot width) -> CSS Height */
+            /* We want visual height to be 75px (Toolbar height) -> CSS Width */
             width: 75px; 
             height: 50px; 
-            /* Text should be visually 'below' icon. 
-               In DOM: Icon is Top, Text is Bottom.
-               Rotated -90: Icon is Left, Text is Right.
-               User holds phone sideways (Top is Left): Icon is Top, Text is Bottom. Perfect. */
+            
+            /* Force centering */
+            position: absolute;
+            top: 50%; left: 50%;
+            margin-top: -25px; /* Half of height */
+            margin-left: -37.5px; /* Half of width */
         }
 
-        body.landscape-mode #page-info { transform: rotate(-90deg); }
+        body.landscape-mode #page-info { transform: rotate(90deg); }
 
         /* --- FULL SCREEN CONTROLS LAYER --- */
         #fs-controls {
@@ -361,9 +369,9 @@
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
         /* Rotate FS Controls in Landscape */
-        body.landscape-mode #fs-exit { transform: rotate(-90deg); }
-        body.landscape-mode #fs-hand { transform: rotate(-90deg); }
-        body.landscape-mode #fs-page-info { transform: rotate(-90deg); origin: center; }
+        body.landscape-mode #fs-exit { transform: rotate(90deg); }
+        body.landscape-mode #fs-hand { transform: rotate(90deg); }
+        body.landscape-mode #fs-page-info { transform: rotate(90deg); origin: center; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
@@ -751,7 +759,7 @@
                 
                 // --- ORIENTATION CHECK ---
                 // If the viewport width is greater than height, it's a "landscape" visual
-                // This usually implies user should hold phone sideways.
+                // This usually implies user should hold phone sideways (Top to the Left).
                 if (viewport.width > viewport.height) {
                     document.body.classList.add('landscape-mode');
                 } else {
