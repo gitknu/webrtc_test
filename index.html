@@ -204,7 +204,7 @@
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
-            padding: 1rem 0.5rem 85px 0.5rem; /* Space for toolbar */
+            padding: 1rem 0.5rem 80px 0.5rem; /* Space for toolbar */
             position: relative;
             background: #e0e0e0;
             width: 100%;
@@ -239,7 +239,7 @@
         .bounce { animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
 
-        .touch-zone { position: fixed; top: 0; bottom: 85px; width: 15%; z-index: 10; }
+        .touch-zone { position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10; }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
@@ -256,25 +256,35 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Toolbar */
+        /* --- COMPACT TOOLBAR --- */
         #toolbar {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
             background-color: var(--color-attention-med);
-            display: flex; justify-content: space-around; align-items: center;
+            /* Center elements with gap instead of space-around to prevent overflow */
+            display: flex; justify-content: center; align-items: center;
+            gap: 4px; /* Tight gap */
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
+            padding-left: 2px; padding-right: 2px;
         }
 
-        #page-info { color: white; font-size: 1.2rem; font-weight: 600; min-width: 70px; text-align: center; }
+        #page-info { 
+            color: white; font-size: 1rem; font-weight: 600; 
+            min-width: 45px; text-align: center; 
+            white-space: nowrap; 
+            margin: 0 2px;
+        }
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 0.5rem; border-radius: 0.5rem;
+            padding: 4px 2px; /* Minimized padding */
+            border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 55px; /* Fit more buttons */
+            min-width: 44px; /* Compact width */
+            flex-shrink: 1;
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.7rem; margin-top: 4px; font-weight: 500; }
+        .tool-btn span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; }
         
         .tool-btn.danger { color: #ffcccc; } 
         
