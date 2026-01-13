@@ -19,15 +19,11 @@
 
     <style>
         :root {
-            /* Functional Color Palette */
             --color-bg: #f4f4f4;
             --color-card: #ffffff;
-            
-            /* ATTENTION COLORS */
-            --color-attention-high: #b80000; /* Red: Main Actions, Listener */
-            --color-attention-med: #0b5394;  /* Blue: Secondary Actions, Speaker, Inputs */
-            --color-hand: #f59e0b; /* Amber for Hand Raise */
-            
+            --color-attention-high: #b80000;
+            --color-attention-med: #0b5394;
+            --color-hand: #f59e0b;
             --color-text: #000000;
             --color-border: #cccccc;
             --shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -43,13 +39,12 @@
             font-size: 16px;
             overflow: hidden; 
             height: 100vh; width: 100vw;
-            display: flex; flex-direction: column;
         }
 
-        /* --- UI OVERLAYS --- */
+        /* --- 1. SETUP UI LAYER (Standard Orientation) --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(244, 244, 244, 1); z-index: 200;
+            background: rgba(244, 244, 244, 1); z-index: 500; /* Above everything */
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 15px;
         }
@@ -61,7 +56,6 @@
             border-radius: 1.2rem;
             text-align: center; 
             width: 100%; max-width: 450px;
-            /* Responsiveness: Fit screen, scroll inside only if needed */
             max-height: 95vh; 
             overflow-y: auto; 
             box-shadow: var(--shadow);
@@ -70,190 +64,142 @@
         }
         
         .hidden { display: none !important; }
-
-        h3 { 
-            margin: 0;
-            color: var(--color-text); 
-            font-weight: 700;
-            font-size: 1.4rem;
-        }
-
+        h3 { margin: 0; color: var(--color-text); font-weight: 700; font-size: 1.4rem; }
         p { margin: 0; font-size: 1rem; color: var(--color-text); line-height: 1.4; }
-        
-        /* --- ROLE BUTTONS (Adaptive Layout) --- */
+
+        /* Role Buttons */
         #role-menu {
             display: flex; flex-direction: column; gap: 15px;
-            width: 100%; max-width: 500px;
-            height: 100%; 
-            padding: 10px 0;
-            justify-content: center;
+            width: 100%; max-width: 500px; height: 100%; 
+            padding: 10px 0; justify-content: center;
         }
-
         .role-btn {
-            flex: 1; /* Grow to fill space */
-            max-height: 45vh; /* Don't get too tall on tablets */
+            flex: 1; max-height: 45vh;
             border: none; border-radius: 1.2rem;
             font-family: 'Montserrat', sans-serif;
-            font-size: clamp(1.5rem, 5vw, 2.2rem); /* Responsive Font */
-            font-weight: 800;
+            font-size: clamp(1.5rem, 5vw, 2.2rem); font-weight: 800;
             color: white; cursor: pointer;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            gap: 15px;
+            gap: 15px; text-transform: uppercase;
             box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
-            text-transform: uppercase;
         }
-
         .role-btn:active { transform: scale(0.97); }
-        
-        /* RED: Listener (Main Role) */
-        .role-listener { 
-            background-color: var(--color-attention-high); 
-            border: 2px solid var(--color-attention-high);
-        }
-        
-        /* BLUE: Speaker (Secondary Role) */
-        .role-speaker { 
-            background-color: var(--color-attention-med); 
-            border: 2px solid var(--color-attention-med);
-        }
-        
-        /* --- BUTTONS & INPUTS --- */
-        
-        /* Primary Action (RED) */
+        .role-listener { background-color: var(--color-attention-high); }
+        .role-speaker { background-color: var(--color-attention-med); }
+
+        /* Inputs & Buttons */
         button.btn-primary {
-            background: var(--color-attention-high); 
-            color: white; border: none;
-            padding: 1rem; 
-            font-size: 1.1rem; 
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            border-radius: 0.8rem;
-            cursor: pointer; width: 100%;
+            background: var(--color-attention-high); color: white; border: none;
+            padding: 1rem; font-size: 1.1rem; font-weight: 700;
+            border-radius: 0.8rem; width: 100%;
             display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3);
             text-transform: uppercase;
-            flex-shrink: 0; /* Prevent crushing */
         }
-        button.btn-primary:active { transform: scale(0.98); }
-        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-
-        /* Secondary Action (BLUE/WHITE) */
         button.btn-secondary { 
-            background: white; 
-            color: var(--color-attention-med); 
-            border: 2px solid var(--color-attention-med); 
-            padding: 0.8rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 0.8rem;
-            cursor: pointer; width: 100%;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            font-family: 'Montserrat', sans-serif;
-            flex-shrink: 0;
+            background: white; color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med); padding: 0.8rem;
+            font-size: 1rem; font-weight: 600; border-radius: 0.8rem;
+            width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        button.btn-secondary:active { background: #f0f8ff; }
-
-        /* Inputs (BLUE Focus) */
         input[type="text"] {
-            padding: 1rem; width: 100%;
-            background: #fff; 
-            border: 2px solid var(--color-attention-med);
-            color: var(--color-attention-med); 
-            border-radius: 0.8rem; 
-            outline: none;
-            font-size: 1.1rem; text-align: center;
-            font-family: 'Montserrat', sans-serif;
+            padding: 1rem; width: 100%; background: #fff; 
+            border: 2px solid var(--color-attention-med); color: var(--color-attention-med); 
+            border-radius: 0.8rem; outline: none; font-size: 1.1rem; text-align: center;
             font-weight: 600;
-            flex-shrink: 0;
         }
-        input[type="text"]::placeholder { color: #88a; font-weight: 400; }
         input[type="file"] { display: none; }
 
-        /* --- QR SCANNER CUSTOMIZATION --- */
+        /* QR Scanner */
         #reader {
-            width: 100%;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #000;
-            border: 3px solid var(--color-attention-med);
-            flex-shrink: 0; /* Important: don't collapse */
-            min-height: 200px;
+            width: 100%; border-radius: 1rem; overflow: hidden; background: #000;
+            border: 3px solid var(--color-attention-med); min-height: 200px;
         }
         #reader video { object-fit: cover; border-radius: 1rem; }
-        
-        /* Force Library Button to be Red */
         #reader button {
-            background-color: var(--color-attention-high) !important;
-            color: white !important;
-            border: none !important;
-            padding: 1rem !important;
-            border-radius: 0.5rem !important;
-            font-family: 'Montserrat', sans-serif !important;
-            font-weight: 600 !important;
-            margin-top: 10px !important;
-            width: 100% !important;
+            background-color: var(--color-attention-high) !important; color: white !important;
+            border: none !important; padding: 1rem !important;
+            border-radius: 0.5rem !important; margin-top: 10px !important; width: 100% !important;
         }
+        #html5-qrcode-button-camera-stop, #html5-qrcode-anchor-scan-type-change { display: none !important; }
         
-        #html5-qrcode-button-camera-stop, 
-        #html5-qrcode-anchor-scan-type-change, 
-        #reader__dashboard_section_csr span { display: none !important; }
+        /* Client List */
+        #client-list {
+            text-align: left; max-height: 150px; overflow-y: auto;
+            background: #f9f9f9; border: 1px solid #eee;
+            border-radius: 0.8rem; padding: 0.5rem; margin: 0; width: 100%; flex-grow: 1;
+        }
+        .client-row { display: flex; justify-content: space-between; padding: 0.8rem; border-bottom: 1px solid #eee; font-size: 0.9rem; font-weight: 600; }
+        .status-ready { color: var(--color-attention-high); font-weight: 700; }
+        .status-wait { color: var(--color-attention-med); }
+        .file-label {
+            font-size: 0.9rem; color: var(--color-attention-med); word-break: break-all;
+            font-weight: 600; padding: 10px; border: 2px dashed var(--color-attention-med);
+            border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
+        }
 
-        /* --- PDF VIEWER --- */
+        /* --- 2. MAIN APP VIEW (Forced Landscape) --- */
+        #app-view {
+            position: absolute;
+            width: 100vh; /* Swap width/height for rotation */
+            height: 100vw;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            background: #e0e0e0;
+        }
+
+        /* PDF Container */
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
             padding: 1rem 0.5rem 80px 0.5rem; /* Space for toolbar */
             position: relative;
-            background: #e0e0e0;
             width: 100%;
         }
 
-        /* Fullscreen Mode Adjustments */
+        /* Fullscreen Mode */
         body.fullscreen-mode #toolbar { display: none !important; }
         body.fullscreen-mode #pdf-container { padding-bottom: 0 !important; background: black; }
         body.fullscreen-mode #fs-controls { display: block !important; }
 
-        .canvas-wrapper {
-            position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            background: white;
-        }
-        
+        .canvas-wrapper { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); background: white; }
         canvas#the-canvas { display: block; max-width: 100%; height: auto; }
         canvas#draw-canvas {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            touch-action: none; cursor: crosshair;
-            pointer-events: none; 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            touch-action: none; cursor: crosshair; pointer-events: none; 
         }
 
-        /* HAND OVERLAY (Speaker View) */
+        /* Hand Overlay */
         #hand-overlay {
             position: absolute; top: 10px; left: 10px;
             background: rgba(255, 255, 255, 0.95);
             border: 2px solid var(--color-hand);
-            border-radius: 20px;
-            padding: 8px 16px;
+            border-radius: 20px; padding: 8px 16px;
             display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 50;
             font-weight: 700; color: #000;
         }
         .bounce { animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+        /* Rotate overlay content so it's upright for portrait user */
+        #hand-overlay { transform: rotate(-90deg); transform-origin: center; top: 50px; left: -10px; } 
 
+        /* Click Zones */
         .touch-zone { position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10; }
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        /* QR Modal */
+        /* QR Modal (Inside rotated view, needs counter-rotation to look normal? Or let it be sideways?) 
+           Actually, let's keep QR modal in #ui-layer styles so it's upright. */
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.98); z-index: 300;
             justify-content: center; align-items: center; flex-direction: column;
             padding: 20px;
+            /* Counter-rotate if inside app-view */
+            transform: rotate(-90deg);
         }
         #qr-code-box { 
             background: white; padding: 1.5rem; border-radius: 1.5rem; 
@@ -261,100 +207,70 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* --- COMPACT TOOLBAR --- */
+        /* --- TOOLBAR (Sideways/Bottom) --- */
         #toolbar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 75px;
             background-color: var(--color-attention-med);
             display: flex; justify-content: center; align-items: center;
-            gap: 4px; /* Tight gap */
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
+            gap: 4px; box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
             padding-bottom: env(safe-area-inset-bottom);
-            padding-left: 2px; padding-right: 2px;
         }
+
+        /* Rotate Icons for Portrait User (-90deg) */
+        .tool-btn i, #fs-controls button i, #page-info { transform: rotate(-90deg); }
+        .tool-btn span { display: none; } /* Hide text to save space in rotation */
 
         #page-info { 
             color: white; font-size: 1rem; font-weight: 600; 
-            min-width: 45px; text-align: center; 
-            white-space: nowrap; 
-            margin: 0 2px;
+            min-width: 45px; text-align: center; white-space: nowrap; margin: 0 10px;
         }
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 4px 2px; /* Minimized padding */
-            border-radius: 0.5rem;
+            padding: 10px; border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 44px; /* Compact width */
-            flex-shrink: 1;
+            min-width: 44px;
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; }
-        
         .tool-btn.danger { color: #ffcccc; } 
-        
-        /* Active Hand State (Listener) */
         .hand-active { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); }
         .hand-active i { fill: var(--color-hand); }
-        
-        /* FS Control Buttons */
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
-        .file-label {
-            font-size: 0.9rem; color: var(--color-attention-med); 
-            word-break: break-all; font-weight: 600;
-            padding: 10px; border: 2px dashed var(--color-attention-med);
-            border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
-        }
-        
-        #client-list {
-            text-align: left; max-height: 150px; overflow-y: auto;
-            background: #f9f9f9; border: 1px solid #eee;
-            border-radius: 0.8rem; padding: 0.5rem; margin: 0;
-            width: 100%; flex-grow: 1; /* Fill available space in card */
-        }
-        .client-row { 
-            display: flex; justify-content: space-between; 
-            padding: 0.8rem; border-bottom: 1px solid #eee; 
-            font-size: 0.9rem; font-weight: 600;
-        }
-        .status-ready { color: var(--color-attention-high); font-weight: 700; }
-        .status-wait { color: var(--color-attention-med); }
-
-        /* --- FULL SCREEN CONTROLS LAYER --- */
+        /* --- FULL SCREEN CONTROLS --- */
         #fs-controls {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Let clicks pass through to content mainly */
-            z-index: 150;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 150;
         }
         
-        /* Separated Elements */
+        /* Positioned relative to Logical View (Landscape) */
+        
+        /* Logical Top Right (Exit) -> Physical Bottom Right */
         #fs-exit {
-            position: absolute; top: 20px; right: 20px;
-            pointer-events: auto;
+            position: absolute; top: 20px; right: 20px; pointer-events: auto;
             background: rgba(0, 0, 0, 0.6); color: white;
             border: none; border-radius: 50%; width: 44px; height: 44px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
         
+        /* Logical Top Left (Counter) -> Physical Top Right */
         #fs-page-info {
-            position: absolute; top: 20px; left: 20px;
-            pointer-events: auto;
+            position: absolute; top: 20px; left: 20px; pointer-events: auto;
             background: rgba(0, 0, 0, 0.6); color: white;
             padding: 8px 16px; border-radius: 20px;
             font-weight: 700; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
         }
+        #fs-page-info span { transform: rotate(-90deg); display: inline-block; margin: 0 2px; }
 
+        /* Logical Bottom Right (Hand) -> Physical Bottom Left */
         #fs-hand {
-            position: absolute; bottom: 30px; right: 20px;
-            pointer-events: auto;
+            position: absolute; bottom: 30px; right: 20px; pointer-events: auto;
             background: white; color: #aaa;
             border: 2px solid #ccc;
             border-radius: 50%; width: 64px; height: 64px;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.2s;
         }
         #fs-hand:active { transform: scale(0.95); }
@@ -363,17 +279,15 @@
 </head>
 <body>
 
-    <!-- 1. UI LAYER -->
+    <!-- 1. UI LAYER (Normal Orientation) -->
     <div id="ui-layer">
         
         <!-- STEP 1: ROLE SELECTION -->
         <div id="role-menu">
-            <!-- RED: Main Role -->
             <button class="role-btn role-listener" onclick="setupListener()">
                 <i data-lucide="ear" width="72" height="72"></i>
                 Я СЛУХАЧ
             </button>
-            <!-- BLUE: Secondary Role -->
             <button class="role-btn role-speaker" onclick="setupSpeaker()">
                 <i data-lucide="mic-2" width="72" height="72"></i>
                 Я ВЕДУЧИЙ
@@ -385,20 +299,11 @@
             <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
             </button>
-
             <h3>Підключення</h3>
-            
-            <!-- Camera Container -->
             <div id="reader"></div> 
-            
             <p>Наведіть камеру на QR код</p>
-            
             <div style="width:100%; height:1px; background:#eee;"></div>
-
-            <!-- BLUE: Input -->
             <input type="text" id="join-input" placeholder="Або введіть ID вручну">
-            
-            <!-- RED: Main Join Action -->
             <button class="btn-primary" onclick="joinGame()">
                 <i data-lucide="link"></i> ПРИЄДНАТИСЬ
             </button>
@@ -409,20 +314,12 @@
             <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
             </button>
-            
             <h3>Кабінет Ведучого</h3>
-            
-            <!-- QR & ID -->
             <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 2px solid var(--color-attention-med); border-radius: 10px;"></div>
-            
             <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 0.9rem; padding: 0.8rem; background: #f0f0f0;">
-
-            <!-- Users -->
             <div id="client-list">
                 <div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>
             </div>
-
-            <!-- File Upload (BLUE - Secondary) -->
             <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
                 <div id="file-name" class="file-label hidden"></div>
                 <button class="btn-secondary" onclick="document.getElementById('file-upload').click()">
@@ -430,12 +327,9 @@
                 </button>
                 <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
             </div>
-
-            <!-- Start Button (RED - Main Action) -->
             <button id="btn-start-sync" onclick="startDistribution()" class="btn-primary" disabled>
                 <i data-lucide="play"></i> ПОЧАТИ ВИСТУП
             </button>
-            
             <div id="sync-status" style="display:none; color: var(--color-attention-high); font-weight:700; font-size: 1.1rem;">
                 <i data-lucide="loader-2" class="spin"></i> Завантаження...
             </div>
@@ -452,102 +346,88 @@
         </div>
     </div>
 
-    <!-- 2. MAIN VIEWER -->
-    
-    <!-- QR Modal -->
-    <div id="qr-modal" onclick="toggleQR()">
-        <div id="qr-code-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom: 15px;">Поділитися</h3>
-            <div id="qrcode-modal-tgt"></div>
-            <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
-        </div>
-    </div>
-
-    <!-- Invisible Click Zones (Speaker Only technically, but kept for logic) -->
-    <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
-    <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
-
-    <!-- Full Screen Controls (Listener Only) -->
-    <div id="fs-controls">
-        <div id="fs-page-info">
-            <span id="fs_page_num">--</span> / <span id="fs_page_count">--</span>
-        </div>
-        <button id="fs-exit" onclick="exitFullScreen()">
-            <i data-lucide="minimize" width="24" height="24"></i>
-        </button>
-        <button id="fs-hand" onclick="toggleHand()">
-            <i data-lucide="hand" width="32" height="32"></i>
-        </button>
-    </div>
-
-    <!-- PDF Container -->
-    <div id="pdf-container">
-        <!-- Hand Overlay (Speaker View) -->
-        <div id="hand-overlay" class="hidden bounce">
-            <i data-lucide="hand" width="24" height="24" fill="#f59e0b" stroke="none"></i>
-            <span id="hand-count">0</span>
+    <!-- 2. MAIN VIEW WRAPPER (Rotated 90deg) -->
+    <div id="app-view">
+        
+        <!-- QR Modal -->
+        <div id="qr-modal" onclick="toggleQR()">
+            <div id="qr-code-box" onclick="event.stopPropagation()">
+                <h3 style="margin-bottom: 15px;">Поділитися</h3>
+                <div id="qrcode-modal-tgt"></div>
+                <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
+            </div>
         </div>
 
-        <div class="canvas-wrapper">
-            <canvas id="the-canvas"></canvas>
-            <canvas id="draw-canvas"></canvas>
-        </div>
-    </div>
+        <!-- Click Zones -->
+        <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
+        <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
 
-    <!-- Toolbar -->
-    <div id="toolbar">
-        <!-- Common -->
-        <button class="tool-btn" onclick="toggleQR()">
-            <i data-lucide="qr-code" width="24" height="24"></i>
-            <span>QR</span>
-        </button>
-
-        <!-- Speaker: Users Count -->
-        <div class="tool-btn spk-only hidden" id="user-count-display">
-            <i data-lucide="users" width="24" height="24"></i>
-            <span id="user-count-val">0</span>
+        <!-- Full Screen Controls (Listener Only) -->
+        <div id="fs-controls">
+            <div id="fs-page-info">
+                <span id="fs_page_num">--</span> <span>/</span> <span id="fs_page_count">--</span>
+            </div>
+            <button id="fs-exit" onclick="exitFullScreen()">
+                <i data-lucide="minimize" width="24" height="24"></i>
+            </button>
+            <button id="fs-hand" onclick="toggleHand()">
+                <i data-lucide="hand" width="32" height="32"></i>
+            </button>
         </div>
 
-        <!-- Listener: Raise Hand -->
-        <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
-            <i data-lucide="hand" width="24" height="24"></i>
-            <span>Рука</span>
-        </button>
+        <!-- PDF Container -->
+        <div id="pdf-container">
+            <!-- Hand Overlay -->
+            <div id="hand-overlay" class="hidden bounce">
+                <i data-lucide="hand" width="24" height="24" fill="#f59e0b" stroke="none"></i>
+                <span id="hand-count">0</span>
+            </div>
 
-        <!-- Listener: Full Screen -->
-        <button class="tool-btn lst-only hidden" onclick="enterFullScreen()">
-            <i data-lucide="maximize" width="24" height="24"></i>
-            <span>Full</span>
-        </button>
-
-        <!-- Speaker: Prev -->
-        <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="24" height="24"></i>
-            <span>Назад</span>
-        </button>
-
-        <!-- Common: Page Info -->
-        <div id="page-info">
-            <span id="page_num">--</span> / <span id="page_count">--</span>
+            <div class="canvas-wrapper">
+                <canvas id="the-canvas"></canvas>
+                <canvas id="draw-canvas"></canvas>
+            </div>
         </div>
 
-        <!-- Speaker: Next -->
-        <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="24" height="24"></i>
-            <span>Далі</span>
-        </button>
+        <!-- Toolbar -->
+        <div id="toolbar">
+            <button class="tool-btn" onclick="toggleQR()">
+                <i data-lucide="qr-code" width="24" height="24"></i>
+            </button>
 
-        <!-- Common: Rotate -->
-        <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="24" height="24"></i>
-            <span>Оберт</span>
-        </button>
+            <div class="tool-btn spk-only hidden" id="user-count-display">
+                <i data-lucide="users" width="24" height="24"></i>
+                <span id="user-count-val" style="transform: rotate(-90deg); margin-top:5px; font-weight:700;">0</span>
+            </div>
 
-        <!-- Speaker: Clear -->
-        <button class="tool-btn danger spk-only hidden" id="eraser-btn" onclick="clearDrawings(true)">
-            <i data-lucide="eraser" width="24" height="24"></i>
-            <span>Стерти</span>
-        </button>
+            <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
+                <i data-lucide="hand" width="24" height="24"></i>
+            </button>
+
+            <button class="tool-btn lst-only hidden" onclick="enterFullScreen()">
+                <i data-lucide="maximize" width="24" height="24"></i>
+            </button>
+
+            <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
+                <i data-lucide="arrow-left" width="24" height="24"></i>
+            </button>
+
+            <div id="page-info">
+                <span id="page_num">--</span> / <span id="page_count">--</span>
+            </div>
+
+            <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
+                <i data-lucide="arrow-right" width="24" height="24"></i>
+            </button>
+
+            <button class="tool-btn" id="rotate" onclick="onRotate()">
+                <i data-lucide="rotate-cw" width="24" height="24"></i>
+            </button>
+
+            <button class="tool-btn danger spk-only hidden" id="eraser-btn" onclick="clearDrawings(true)">
+                <i data-lucide="eraser" width="24" height="24"></i>
+            </button>
+        </div>
     </div>
 
     <script>
@@ -565,23 +445,19 @@
         const container = document.getElementById('pdf-container');
         
         let peer = null;
-        let connections = []; // { id, conn, ready, handRaised }
+        let connections = []; 
         let isLeader = false;
         let transferInProgress = false;
         let leaderPdfBlob = null;
         
-        // Listener specific globals
         let myHandRaised = false;
         let hostConnection = null;
-        
         let incomingChunks = []; 
         let incomingSize = 0;
         let totalExpectedSize = 0;
-
         let isDrawing = false;
         let lastX = 0, lastY = 0;
         let pageMarks = {};
-
         let html5QrcodeScanner = null;
 
         lucide.createIcons();
@@ -622,7 +498,6 @@
         function updateToolbarForRole() {
             const spkBtns = document.querySelectorAll('.spk-only');
             const lstBtns = document.querySelectorAll('.lst-only');
-            
             if (isLeader) {
                 spkBtns.forEach(el => el.classList.remove('hidden'));
                 lstBtns.forEach(el => el.classList.add('hidden'));
@@ -641,7 +516,6 @@
             document.getElementById('listener-menu').classList.remove('hidden');
             isLeader = false;
             updateToolbarForRole();
-
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
@@ -653,7 +527,6 @@
                 const params = new URLSearchParams(url.search);
                 if(params.get('host')) hostId = params.get('host');
             } catch(e) {}
-            
             if(html5QrcodeScanner) html5QrcodeScanner.clear();
             joinGame(hostId);
         }
@@ -676,6 +549,8 @@
 
         // --- PDF ENGINE ---
         function getOptimalScale(page) {
+            // container.clientWidth is the height in portrait mode (because of rotation)
+            // But logic uses logical pixels, so standard math applies as browser sees rotated div as X wide.
             const containerWidth = container.clientWidth - 10; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
             return (containerWidth / viewport.width) * (window.devicePixelRatio || 1);
@@ -687,7 +562,7 @@
                 pdfDoc = await loadingTask.promise;
                 const num = pdfDoc.numPages;
                 document.getElementById('page_count').textContent = num;
-                document.getElementById('fs_page_count').textContent = num; // FS sync
+                document.getElementById('fs_page_count').textContent = num; 
                 renderPage(pageNum);
                 return true;
             } catch (e) {
@@ -722,9 +597,8 @@
             });
 
             document.getElementById('page_num').textContent = num;
-            document.getElementById('fs_page_num').textContent = num; // FS sync
+            document.getElementById('fs_page_num').textContent = num; 
             
-            // Only update buttons if leader (listeners don't have these buttons)
             if(isLeader) {
                 document.getElementById('prev').disabled = num <= 1;
                 document.getElementById('next').disabled = num >= pdfDoc.numPages;
@@ -741,17 +615,14 @@
             if (!hostConnection) return;
             myHandRaised = !myHandRaised;
             
-            // Update UI (Toolbar)
             const btn = document.getElementById('btn-hand');
             if (myHandRaised) btn.classList.add('hand-active');
             else btn.classList.remove('hand-active');
 
-            // Update UI (FullScreen)
             const fsBtn = document.getElementById('fs-hand');
             if (myHandRaised) fsBtn.classList.add('fs-btn-active');
             else fsBtn.classList.remove('fs-btn-active');
             
-            // Send to Host
             hostConnection.send({ type: 'HAND', value: myHandRaised });
         }
 
@@ -783,6 +654,8 @@
 
         function getPos(e) {
             const rect = drawCanvas.getBoundingClientRect();
+            // ClientX/Y are viewport relative. Rect is transformed. 
+            // Math accounts for rotation because Rect gives bounding box.
             return {
                 x: (e.clientX - rect.left) * (drawCanvas.width / rect.width),
                 y: (e.clientY - rect.top) * (drawCanvas.height / rect.height)
@@ -884,7 +757,6 @@
         });
 
         // --- PEER JS LOGIC ---
-
         function initLeader() {
             isLeader = true;
             updateToolbarForRole();
@@ -895,14 +767,10 @@
             peer.on('open', id => {
                 const url = window.location.href.split('?')[0] + '?host=' + id;
                 document.getElementById('share-link').value = url;
-                
                 document.getElementById("qr-container").innerHTML = "";
                 document.getElementById("qrcode-modal-tgt").innerHTML = "";
-                
-                // Black QR Codes
                 new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150, colorDark: "#000000" });
                 new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250, colorDark: "#000000" });
-                
                 document.getElementById('btn-start-sync').disabled = false;
             });
 
@@ -936,10 +804,7 @@
         }
 
         function updateClientList() {
-            // Update Toolbar Count
             document.getElementById('user-count-val').innerText = connections.length;
-            
-            // Update Menu List
             const list = document.getElementById('client-list');
             if(connections.length === 0) {
                 list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
@@ -953,7 +818,6 @@
                     </span>
                 </div>
             `).join('');
-            
             if(!transferInProgress) {
                 document.getElementById('btn-start-sync').innerHTML = `<i data-lucide="play"></i> ПОЧАТИ (${connections.length})`;
                 lucide.createIcons();
@@ -961,13 +825,13 @@
         }
 
         function startDistribution() {
+            // Hide setup UI
+            document.getElementById('ui-layer').classList.add('hidden');
+            
             if(leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
             else renderPdf(DEFAULT_PDF_URL);
 
-            if (connections.length === 0) {
-                 document.getElementById('ui-layer').classList.add('hidden');
-                 return;
-            }
+            if (connections.length === 0) return;
             
             transferInProgress = true;
             document.getElementById('btn-start-sync').style.display = 'none';
@@ -978,10 +842,8 @@
         function syncSingleClient(client) {
             client.ready = false;
             updateClientList();
-            
             const mode = leaderPdfBlob ? 'custom' : 'default';
             client.conn.send({ type: 'INIT', mode: mode });
-
             if (mode === 'custom') sendFileRaw(client.conn, leaderPdfBlob);
         }
 
@@ -1009,7 +871,6 @@
 
         function checkGlobalSync() {
             if (transferInProgress && connections.length > 0 && connections.every(c => c.ready)) {
-                document.getElementById('ui-layer').classList.add('hidden');
                 broadcast({ type: 'PAGE', value: pageNum });
             }
         }
@@ -1026,16 +887,13 @@
             document.getElementById('loading-menu').classList.remove('hidden');
             isLeader = false;
             updateToolbarForRole();
-
             if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
 
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
                 hostConnection = conn;
-
                 conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
-
                 conn.on('data', async data => {
                     if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
                         incomingChunks.push(data);
