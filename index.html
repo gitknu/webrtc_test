@@ -8,7 +8,7 @@
     <!-- Fonts: Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Libraries -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -29,10 +29,10 @@
             
             --color-text: #000000;
             --color-border: #cccccc;
-            --shadow: 0 8px 24px rgba(0,0,0,0.15);
+            --shadow: 0 4px 20px rgba(0,0,0,0.15);
         }
 
-        * { box-sizing: border-box; touch-action: manipulation; }
+        * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
         body {
             margin: 0; padding: 0;
@@ -41,7 +41,7 @@
             font-family: 'Montserrat', sans-serif;
             font-size: 16px;
             overflow: hidden; 
-            height: 100vh;
+            height: 100vh; width: 100vw;
             display: flex; flex-direction: column;
         }
 
@@ -50,54 +50,61 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(244, 244, 244, 1); z-index: 200;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            overflow-y: auto; padding: 20px;
+            padding: 15px;
         }
         
         .card {
             background: var(--color-card); 
             color: var(--color-text);
-            padding: 2rem; 
-            border-radius: 1.5rem;
+            padding: 1.5rem; 
+            border-radius: 1.2rem;
             text-align: center; 
-            max-width: 500px; width: 100%;
+            width: 100%; max-width: 450px;
+            /* Responsiveness: Fit screen, scroll inside only if needed */
+            max-height: 95vh; 
+            overflow-y: auto; 
             box-shadow: var(--shadow);
             border: 2px solid var(--color-border);
-            display: flex; flex-direction: column; gap: 1.5rem;
+            display: flex; flex-direction: column; gap: 1rem;
         }
         
         .hidden { display: none !important; }
 
-        h2, h3 { 
+        h3 { 
             margin: 0;
             color: var(--color-text); 
             font-weight: 700;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
         }
 
-        p { margin: 0; font-size: 1rem; color: var(--color-text); }
+        p { margin: 0; font-size: 1rem; color: var(--color-text); line-height: 1.4; }
         
-        /* --- ROLE BUTTONS --- */
+        /* --- ROLE BUTTONS (Adaptive Layout) --- */
         #role-menu {
-            display: flex; flex-direction: column; gap: 25px;
+            display: flex; flex-direction: column; gap: 15px;
             width: 100%; max-width: 500px;
-            height: 100%; justify-content: center;
+            height: 100%; 
+            padding: 10px 0;
+            justify-content: center;
         }
 
         .role-btn {
-            flex: 1; min-height: 200px; max-height: 40vh;
-            border: none; border-radius: 1.5rem;
+            flex: 1; /* Grow to fill space */
+            max-height: 45vh; /* Don't get too tall on tablets */
+            border: none; border-radius: 1.2rem;
             font-family: 'Montserrat', sans-serif;
-            font-size: 2rem; font-weight: 800;
+            font-size: clamp(1.5rem, 5vw, 2.2rem); /* Responsive Font */
+            font-weight: 800;
             color: white; cursor: pointer;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            gap: 20px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            gap: 15px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
             transition: transform 0.1s;
             text-transform: uppercase;
         }
 
-        .role-btn:active { transform: scale(0.98); }
+        .role-btn:active { transform: scale(0.97); }
         
         /* RED: Listener (Main Role) */
         .role-listener { 
@@ -113,12 +120,12 @@
         
         /* --- BUTTONS & INPUTS --- */
         
-        /* Primary Action (RED) - Single most important button per page */
+        /* Primary Action (RED) */
         button.btn-primary {
             background: var(--color-attention-high); 
             color: white; border: none;
-            padding: 1.2rem; 
-            font-size: 1.2rem; 
+            padding: 1rem; 
+            font-size: 1.1rem; 
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
             border-radius: 0.8rem;
@@ -126,36 +133,39 @@
             display: flex; align-items: center; justify-content: center; gap: 10px;
             box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3);
             text-transform: uppercase;
+            flex-shrink: 0; /* Prevent crushing */
         }
         button.btn-primary:active { transform: scale(0.98); }
-        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-        /* Secondary Action (BLUE/WHITE) - Options, Inputs, Back */
+        /* Secondary Action (BLUE/WHITE) */
         button.btn-secondary { 
             background: white; 
             color: var(--color-attention-med); 
             border: 2px solid var(--color-attention-med); 
-            padding: 1rem;
+            padding: 0.8rem;
             font-size: 1rem;
             font-weight: 600;
             border-radius: 0.8rem;
             cursor: pointer; width: 100%;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
             font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
         }
         button.btn-secondary:active { background: #f0f8ff; }
 
         /* Inputs (BLUE Focus) */
         input[type="text"] {
-            padding: 1.2rem; width: 100%;
+            padding: 1rem; width: 100%;
             background: #fff; 
-            border: 2px solid var(--color-attention-med); /* Blue border for inputs */
+            border: 2px solid var(--color-attention-med);
             color: var(--color-attention-med); 
             border-radius: 0.8rem; 
             outline: none;
-            font-size: 1.2rem; text-align: center;
+            font-size: 1.1rem; text-align: center;
             font-family: 'Montserrat', sans-serif;
             font-weight: 600;
+            flex-shrink: 0;
         }
         input[type="text"]::placeholder { color: #88a; font-weight: 400; }
         input[type="file"] { display: none; }
@@ -166,11 +176,13 @@
             border-radius: 1rem;
             overflow: hidden;
             background: #000;
-            border: 3px solid var(--color-attention-med); /* Blue frame for camera */
+            border: 3px solid var(--color-attention-med);
+            flex-shrink: 0; /* Important: don't collapse */
+            min-height: 200px;
         }
         #reader video { object-fit: cover; border-radius: 1rem; }
         
-        /* Force Library Button to be Red (High Attention Action) */
+        /* Force Library Button to be Red */
         #reader button {
             background-color: var(--color-attention-high) !important;
             color: white !important;
@@ -191,9 +203,10 @@
         #pdf-container {
             flex: 1; overflow: auto;
             display: flex; justify-content: center; align-items: flex-start;
-            padding: 1rem 0.5rem 6rem 0.5rem;
+            padding: 1rem 0.5rem 85px 0.5rem; /* Space for toolbar */
             position: relative;
             background: #e0e0e0;
+            width: 100%;
         }
 
         .canvas-wrapper {
@@ -214,11 +227,11 @@
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        /* Floating QR Button - BLUE (Information) */
+        /* Floating QR Button */
         #qr-btn {
-            position: fixed; top: 1.5rem; right: 1.5rem;
+            position: fixed; top: 1rem; right: 1rem;
             background-color: var(--color-attention-med); 
-            border: none; color: white; padding: 1rem; border-radius: 50%;
+            border: none; color: white; padding: 0.8rem; border-radius: 50%;
             cursor: pointer; z-index: 50;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -227,17 +240,19 @@
         /* QR Modal */
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.95); z-index: 300;
+            background: rgba(255,255,255,0.98); z-index: 300;
             justify-content: center; align-items: center; flex-direction: column;
+            padding: 20px;
         }
         #qr-code-box { 
-            background: white; padding: 2rem; border-radius: 1.5rem; 
+            background: white; padding: 1.5rem; border-radius: 1.5rem; 
             box-shadow: var(--shadow); border: 2px solid var(--color-attention-med);
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Toolbar - BLUE (Navigation) */
+        /* Toolbar */
         #toolbar {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 85px;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 80px;
             background-color: var(--color-attention-med);
             display: flex; justify-content: space-around; align-items: center;
             box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
@@ -248,37 +263,33 @@
 
         .tool-btn {
             background: none; border: none; color: white; cursor: pointer;
-            padding: 0.8rem; border-radius: 0.5rem;
+            padding: 0.5rem; border-radius: 0.5rem;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 70px;
+            min-width: 65px;
         }
         .tool-btn:active { background-color: rgba(255,255,255,0.2); }
-        .tool-btn span { font-size: 0.8rem; margin-top: 4px; font-weight: 500; }
-        
-        /* Eraser - RED (Destructive/Important) */
+        .tool-btn span { font-size: 0.75rem; margin-top: 4px; font-weight: 500; }
         .tool-btn.danger { color: #ffcccc; } 
-        .tool-btn.danger svg { stroke: #ff9999; }
 
         .file-label {
-            font-size: 1rem; color: var(--color-attention-med); 
+            font-size: 0.9rem; color: var(--color-attention-med); 
             word-break: break-all; font-weight: 600;
-            padding: 15px; border: 2px dashed var(--color-attention-med);
+            padding: 10px; border: 2px dashed var(--color-attention-med);
             border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
         }
         
-        /* List */
         #client-list {
-            text-align: left; max-height: 200px; overflow-y: auto;
+            text-align: left; max-height: 150px; overflow-y: auto;
             background: #f9f9f9; border: 1px solid #eee;
             border-radius: 0.8rem; padding: 0.5rem; margin: 0;
-            width: 100%;
+            width: 100%; flex-grow: 1; /* Fill available space in card */
         }
         .client-row { 
             display: flex; justify-content: space-between; 
-            padding: 1rem; border-bottom: 1px solid #eee; 
-            font-size: 1rem; font-weight: 600;
+            padding: 0.8rem; border-bottom: 1px solid #eee; 
+            font-size: 0.9rem; font-weight: 600;
         }
-        .status-ready { color: var(--color-attention-high); font-weight: 700; } /* Ready = Red (Attention) */
+        .status-ready { color: var(--color-attention-high); font-weight: 700; }
         .status-wait { color: var(--color-attention-med); }
 
     </style>
@@ -292,12 +303,12 @@
         <div id="role-menu">
             <!-- RED: Main Role -->
             <button class="role-btn role-listener" onclick="setupListener()">
-                <i data-lucide="ear" width="80" height="80"></i>
+                <i data-lucide="ear" width="72" height="72"></i>
                 Я СЛУХАЧ
             </button>
             <!-- BLUE: Secondary Role -->
             <button class="role-btn role-speaker" onclick="setupSpeaker()">
-                <i data-lucide="mic-2" width="80" height="80"></i>
+                <i data-lucide="mic-2" width="72" height="72"></i>
                 Я ВЕДУЧИЙ
             </button>
         </div>
@@ -310,13 +321,15 @@
 
             <h3>Підключення</h3>
             
-            <div id="reader"></div> <!-- Camera -->
+            <!-- Camera Container -->
+            <div id="reader"></div> 
             
             <p>Наведіть камеру на QR код</p>
-            <p style="font-size: 0.9rem; opacity: 0.6;">або</p>
+            
+            <div style="width:100%; height:1px; background:#eee;"></div>
 
             <!-- BLUE: Input -->
-            <input type="text" id="join-input" placeholder="Введіть ID вручну">
+            <input type="text" id="join-input" placeholder="Або введіть ID вручну">
             
             <!-- RED: Main Join Action -->
             <button class="btn-primary" onclick="joinGame()">
@@ -335,7 +348,7 @@
             <!-- QR & ID -->
             <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 2px solid var(--color-attention-med); border-radius: 10px;"></div>
             
-            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 1rem; padding: 0.8rem; background: #f0f0f0;">
+            <input type="text" id="share-link" readonly onclick="this.select()" style="font-size: 0.9rem; padding: 0.8rem; background: #f0f0f0;">
 
             <!-- Users -->
             <div id="client-list">
@@ -343,7 +356,7 @@
             </div>
 
             <!-- File Upload (BLUE - Secondary) -->
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
                 <div id="file-name" class="file-label hidden"></div>
                 <button class="btn-secondary" onclick="document.getElementById('file-upload').click()">
                     <i data-lucide="upload"></i> ОБРАТИ СВІЙ ФАЙЛ
@@ -356,7 +369,7 @@
                 <i data-lucide="play"></i> ПОЧАТИ ВИСТУП
             </button>
             
-            <div id="sync-status" style="display:none; color: var(--color-attention-high); font-weight:700; font-size: 1.2rem;">
+            <div id="sync-status" style="display:none; color: var(--color-attention-high); font-weight:700; font-size: 1.1rem;">
                 <i data-lucide="loader-2" class="spin"></i> Завантаження...
             </div>
         </div>
@@ -377,7 +390,7 @@
     <!-- QR Modal -->
     <div id="qr-modal" onclick="toggleQR()">
         <div id="qr-code-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom: 20px;">Поділитися</h3>
+            <h3 style="margin-bottom: 15px;">Поділитися</h3>
             <div id="qrcode-modal-tgt"></div>
             <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
         </div>
@@ -385,7 +398,7 @@
 
     <!-- Floating QR Button -->
     <button id="qr-btn" onclick="toggleQR()" class="hidden">
-        <i data-lucide="qr-code" width="32" height="32"></i>
+        <i data-lucide="qr-code" width="28" height="28"></i>
     </button>
 
     <!-- Invisible Click Zones -->
@@ -403,12 +416,12 @@
     <!-- Toolbar -->
     <div id="toolbar">
         <button class="tool-btn" id="prev" onclick="onPrevPage()">
-            <i data-lucide="arrow-left" width="32" height="32"></i>
+            <i data-lucide="arrow-left" width="28" height="28"></i>
             <span>Назад</span>
         </button>
 
         <button class="tool-btn danger" id="eraser-btn" onclick="clearDrawings(true)" style="display:none;">
-            <i data-lucide="eraser" width="32" height="32"></i>
+            <i data-lucide="eraser" width="28" height="28"></i>
             <span>Стерти</span>
         </button>
 
@@ -417,12 +430,12 @@
         </div>
 
         <button class="tool-btn" id="rotate" onclick="onRotate()">
-            <i data-lucide="rotate-cw" width="32" height="32"></i>
+            <i data-lucide="rotate-cw" width="28" height="28"></i>
             <span>Оберт</span>
         </button>
 
         <button class="tool-btn" id="next" onclick="onNextPage()">
-            <i data-lucide="arrow-right" width="32" height="32"></i>
+            <i data-lucide="arrow-right" width="28" height="28"></i>
             <span>Далі</span>
         </button>
     </div>
@@ -475,6 +488,7 @@
             document.getElementById('role-menu').classList.add('hidden');
             document.getElementById('listener-menu').classList.remove('hidden');
             
+            // Start scanner
             html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", 
                 { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
@@ -513,7 +527,7 @@
 
         // --- PDF ENGINE ---
         function getOptimalScale(page) {
-            const containerWidth = container.clientWidth - 20; 
+            const containerWidth = container.clientWidth - 10; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
             return (containerWidth / viewport.width) * (window.devicePixelRatio || 1);
         }
@@ -699,8 +713,9 @@
                 document.getElementById("qr-container").innerHTML = "";
                 document.getElementById("qrcode-modal-tgt").innerHTML = "";
                 
-                new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150, colorDark: "#0b5394" });
-                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250, colorDark: "#0b5394" });
+                // Black QR Codes
+                new QRCode(document.getElementById("qr-container"), { text: url, width: 150, height: 150, colorDark: "#000000" });
+                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 250, height: 250, colorDark: "#000000" });
                 
                 document.getElementById('qr-btn').classList.remove('hidden');
                 document.getElementById('btn-start-sync').disabled = false;
@@ -863,7 +878,7 @@
                     document.getElementById('ui-layer').classList.add('hidden');
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + hostId;
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
-                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#0b5394" });
+                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                     document.getElementById('qr-btn').classList.remove('hidden');
                     toggleQR();
                 }
