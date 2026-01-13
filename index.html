@@ -658,6 +658,7 @@
         // Listener specific globals
         let myHandRaised = false;
         let hostConnection = null;
+        let handTimeout = null; // Stores the timeout ID for auto-lowering
         
         let incomingChunks = []; 
         let incomingSize = 0;
@@ -847,6 +848,13 @@
         // --- HANDLER LOGIC ---
         function toggleHand() {
             if (!hostConnection) return;
+            
+            // Clear existing auto-lower timer if user clicks manually
+            if (handTimeout) {
+                clearTimeout(handTimeout);
+                handTimeout = null;
+            }
+
             myHandRaised = !myHandRaised;
             
             const btn = document.getElementById('btn-hand');
@@ -858,6 +866,21 @@
             else fsBtn.classList.remove('fs-btn-active');
             
             hostConnection.send({ type: 'HAND', value: myHandRaised });
+
+            // Auto-lower hand after 10 seconds
+            if (myHandRaised) {
+                handTimeout = setTimeout(() => {
+                    myHandRaised = false;
+                    
+                    document.getElementById('btn-hand').classList.remove('hand-active');
+                    document.getElementById('fs-hand').classList.remove('fs-btn-active');
+                    
+                    if (hostConnection) {
+                        hostConnection.send({ type: 'HAND', value: false });
+                    }
+                    handTimeout = null;
+                }, 10000); // 10000ms = 10s
+            }
         }
 
         function updateHandOverlay() {
