@@ -33,7 +33,7 @@
             --shadow: 0 4px 20px rgba(0,0,0,0.15);
 
             /* ROTATION VARIABLE (Set via JS) */
-            --landscape-rotation: 90deg; 
+            --landscape-rotation: 0deg; 
         }
 
         * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -279,6 +279,8 @@
             min-width: 45px; text-align: center; 
             white-space: nowrap; margin: 0 2px;
             transition: transform 0.3s ease;
+            /* Rotate based on variable always */
+            transform: rotate(var(--landscape-rotation));
         }
 
         .tool-btn {
@@ -300,6 +302,9 @@
             padding: 4px;
             transition: transform 0.3s ease;
             width: 100%; height: 100%;
+            
+            /* GLOBAL ROTATION: Icons now always follow the variable */
+            transform: rotate(var(--landscape-rotation));
         }
 
         .btn-inner span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; white-space: nowrap; }
@@ -311,6 +316,7 @@
         /* --- ROTATION MODES --- */
         
         /* Landscape Mode (active when PDF width > height) */
+        /* This handles LAYOUT adjustments (spacing), but rotation is now handled globally above */
         body.landscape-mode .tool-btn {
             /* Constrain slot width so buttons are spaced evenly along the "side" */
             width: 50px; 
@@ -318,21 +324,18 @@
         }
 
         body.landscape-mode .btn-inner {
-            /* Use the CSS variable set via JS */
-            transform: rotate(var(--landscape-rotation));
+            /* Rotation is inherited from base class now */
             
-            /* Swap Dimensions for Layout */
+            /* Swap Dimensions for Layout so text fits */
             width: 75px; 
             height: 50px; 
             
-            /* Force centering */
+            /* Force centering for the "sideways" layout */
             position: absolute;
             top: 50%; left: 50%;
             margin-top: -25px; /* Half of height */
             margin-left: -37.5px; /* Half of width */
         }
-
-        body.landscape-mode #page-info { transform: rotate(var(--landscape-rotation)); }
 
         /* --- FULL SCREEN CONTROLS LAYER --- */
         #fs-controls {
@@ -349,6 +352,8 @@
             background: rgba(0, 0, 0, 0.6); color: white;
             border: none; border-radius: 50%; width: 44px; height: 44px;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation));
         }
         
         #fs-page-info {
@@ -356,6 +361,8 @@
             background: rgba(0, 0, 0, 0.6); color: white;
             padding: 8px 16px; border-radius: 20px;
             font-weight: 700; font-size: 0.9rem;
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation)); origin: center;
         }
 
         #fs-hand {
@@ -365,14 +372,11 @@
             border-radius: 50%; width: 64px; height: 64px;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation));
         }
         #fs-hand:active { transform: scale(0.95); }
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
-
-        /* Rotate FS Controls in Landscape using the variable */
-        body.landscape-mode #fs-exit { transform: rotate(var(--landscape-rotation)); }
-        body.landscape-mode #fs-hand { transform: rotate(var(--landscape-rotation)); }
-        body.landscape-mode #fs-page-info { transform: rotate(var(--landscape-rotation)); origin: center; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
