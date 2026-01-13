@@ -316,7 +316,7 @@
             padding: 4px;
             transition: transform 0.3s ease;
             width: 100%; height: 100%;
-            position: relative; /* Added for Timer Overlay */
+            position: relative; 
             
             /* GLOBAL ROTATION: Icons now always follow the variable */
             transform: rotate(var(--landscape-rotation));
@@ -331,12 +331,14 @@
         /* --- VISUAL TIMER LOADER (Hand) --- */
         .hand-timer-svg {
             position: absolute;
+            /* Default position for Toolbar (Icon + Text) */
             top: 40%; left: 50%;
             transform: translate(-50%, -50%) rotate(-90deg);
             width: 36px; height: 36px;
             pointer-events: none;
             display: none; 
             z-index: 0;
+            transition: top 0.2s; /* Smooth transition when text hides */
         }
 
         /* Adjust larger timer for Full Screen Button */
@@ -348,6 +350,15 @@
         .hand-active .hand-timer-svg,
         .fs-btn-active .hand-timer-svg {
             display: block;
+        }
+
+        /* Hide text specifically in Toolbar button when active */
+        #btn-hand.hand-active span {
+            display: none;
+        }
+        /* Center the timer vertically when text is hidden */
+        #btn-hand.hand-active .hand-timer-svg {
+            top: 50%;
         }
 
         .hand-timer-path {
@@ -625,7 +636,7 @@
             </div>
         </div>
 
-        <!-- Listener: Raise Hand (Updated with SVG Timer) -->
+        <!-- Listener: Raise Hand (Updated with SVG Timer & Hidden text logic) -->
         <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
             <div class="btn-inner">
                 <svg class="hand-timer-svg" viewBox="0 0 36 36">
