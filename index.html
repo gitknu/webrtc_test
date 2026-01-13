@@ -766,6 +766,10 @@
                 const displayScale = getOptimalScale(page);
                 const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
                 
+                // --- DYNAMIC ROTATION FIX ---
+                // Update the CSS variable to match the current rotation state
+                document.documentElement.style.setProperty('--landscape-rotation', rotation + 'deg');
+                
                 // --- ORIENTATION CHECK ---
                 // If the viewport width is greater than height, it's a "landscape" visual
                 // This usually implies user should hold phone sideways.
