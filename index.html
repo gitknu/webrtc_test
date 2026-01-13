@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync PDF Viewer</title>
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg-color: #2e2e2e;
+            --bar-color: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #3498db;
+            --success: #2ecc71;
+            --warning: #f1c40f;
+        }
+
+        * { box-sizing: border-box; touch-action: manipulation; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column;
+            color: var(--text-color);
+        }
+
+        /* --- UI OVERLAYS (Start Menu / Lobby) --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 200;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .card {
+            background: var(--bar-color); color: white;
+            padding: 25px; border-radius: 15px;
+            text-align: center; max-width: 400px; width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+        }
+        
+        .hidden { display: none !important; }
+
+        h2, h3 { margin-top: 0; color: var(--accent-color); }
+        
+        button.menu-btn {
+            background: var(--accent-color); color: white; border: none;
+            padding: 12px 20px; font-size: 16px; border-radius: 8px;
+            cursor: pointer; margin: 8px 0; width: 100%;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        button.menu-btn:active { transform: scale(0.98); }
+        button.menu-btn.secondary { background: #444; }
+        button.menu-btn.success { background: var(--success); font-weight: bold; }
+        
+        input[type="text"] {
+            padding: 12px; width: 100%; margin-bottom: 10px;
+            background: #333; border: 1px solid #555;
+            color: white; border-radius: 8px; outline: none;
+        }
+        input[type="file"] { display: none; }
+
+        /* Client List */
+        #client-list {
+            text-align: left; max-height: 120px; overflow-y: auto;
+            background: #222; border-radius: 8px; padding: 5px; margin: 10px 0;
+        }
+        .client-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 0.9em; }
+        .status-ready { color: var(--success); }
+        .status-wait { color: var(--warning); }
+
+        /* Progress Bar */
+        #progress-bar-container {
+            width: 100%; background: #444; height: 8px;
+            border-radius: 4px; margin-top: 15px; overflow: hidden;
+        }
+        #progress-bar-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.2s; }
+
+        /* --- PDF VIEWER STYLES --- */
+        #pdf-container {
+            flex: 1; overflow: auto;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 20px 10px 90px 10px; /* Bottom padding for toolbar */
+            position: relative;
+        }
+        
+        canvas {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            max-width: 100%; height: auto; display: block;
+        }
+
+        /* Invisible Touch Zones */
+        .touch-zone {
+            position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10;
+        }
+        #zone-prev { left: 0; }
+        #zone-next { right: 0; }
+
+        /* QR Button (Top Right) */
+        #qr-btn {
+            position: fixed; top: 20px; right: 20px;
+            background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            border: none; color: white; padding: 10px; border-radius: 50%;
+            cursor: pointer; z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* QR Modal (In-game) */
+        #qr-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 300;
+            justify-content: center; align-items: center; flex-direction: column;
+            backdrop-filter: blur(5px);
+        }
+        #qr-code-box { background: white; padding: 20px; border-radius: 15px; }
+
+        /* Bottom Toolbar */
+        #toolbar {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
+            background-color: var(--bar-color);
+            display: flex; justify-content: space-around; align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3); z-index: 20;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        #page-info {
+            color: var(--text-color); font-size: 14px; font-weight: bold;
+            min-width: 60px; text-align: center;
+        }
+
+        .tool-btn {
+            background: none; border: none; color: white; cursor: pointer;
+            padding: 10px; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-width: 60px;
+        }
+        .tool-btn:active { background-color: rgba(255,255,255,0.1); }
+        .tool-btn span { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+        .tool-btn:disabled { opacity: 0.3; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 1. UI LAYER (Start / Lobby / Loading) -->
+    <div id="ui-layer">
+        
+        <!-- Start Menu -->
+        <div id="start-menu" class="card">
+            <h2>PDF Sync</h2>
+            
+            <div style="border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 15px;">
+                <p style="opacity: 0.8; margin-bottom: 10px;">I am Presenting</p>
+                <button class="menu-btn secondary" onclick="initLeader('default')">Use Demo PDF</button>
+                <button class="menu-btn" onclick="document.getElementById('file-upload').click()">Upload File</button>
+                <input type="file" id="file-upload" accept="application/pdf" onchange="handleFileSelect(this)">
+                <div id="file-name" style="font-size: 0.8em; color: var(--accent-color); margin-top: 5px;"></div>
+            </div>
+
+            <div>
+                <p style="opacity: 0.8; margin-bottom: 10px;">I am Watching</p>
+                <input type="text" id="join-input" placeholder="Enter Host ID...">
+                <button class="menu-btn success" onclick="joinGame()">Join Session</button>
+            </div>
+        </div>
+
+        <!-- Leader Lobby -->
+        <div id="leader-menu" class="card hidden">
+            <h3>Lobby</h3>
+            <div id="qr-container" style="background:white; padding:10px; border-radius:10px; display:inline-block; margin:10px 0;"></div>
+            
+            <input type="text" id="share-link" readonly onclick="this.select()" style="text-align:center; font-family:monospace;">
+            <button class="menu-btn secondary" onclick="copyLink()" style="margin-bottom: 15px;">Copy Link</button>
+            
+            <div id="client-list">
+                <div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div>
+            </div>
+
+            <button id="btn-start-sync" onclick="startDistribution()" class="menu-btn success" disabled>Start Presentation</button>
+            
+            <div id="sync-status" style="display:none; color: var(--accent-color); font-weight:bold; margin-top:10px;">
+                Sending file...
+            </div>
+        </div>
+
+        <!-- Viewer Loading -->
+        <div id="loading-menu" class="card hidden">
+            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite;"></i>
+            <h3 id="loading-msg" style="margin: 15px 0;">Connecting...</h3>
+            <div id="progress-bar-container" style="display:none;">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <div id="status-text" style="font-size:0.8em; margin-top:5px; opacity:0.7;"></div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN VIEWER -->
+    
+    <!-- QR Modal (Toggleable) -->
+    <div id="qr-modal" onclick="toggleQR()">
+        <div id="qr-code-box" onclick="event.stopPropagation()">
+            <div id="qrcode-modal-tgt"></div>
+        </div>
+        <button class="menu-btn secondary" style="width:auto; margin-top:20px;" onclick="toggleQR()">Close</button>
+    </div>
+
+    <!-- Floating QR Button -->
+    <button id="qr-btn" onclick="toggleQR()" class="hidden" id="float-qr">
+        <i data-lucide="qr-code"></i>
+    </button>
+
+    <!-- Invisible Click Zones -->
+    <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
+    <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
+
+    <!-- PDF Canvas -->
+    <div id="pdf-container">
+        <canvas id="the-canvas"></canvas>
+    </div>
+
+    <!-- Bottom Toolbar -->
+    <div id="toolbar">
+        <button class="tool-btn" id="prev" onclick="onPrevPage()">
+            <i data-lucide="arrow-left" width="24" height="24"></i>
+            <span>Prev</span>
+        </button>
+
+        <div id="page-info">
+            <span id="page_num">--</span> / <span id="page_count">--</span>
+        </div>
+
+        <button class="tool-btn" id="rotate" onclick="onRotate()">
+            <i data-lucide="rotate-cw" width="24" height="24"></i>
+            <span>Rotate</span>
+        </button>
+
+        <button class="tool-btn" id="next" onclick="onNextPage()">
+            <i data-lucide="arrow-right" width="24" height="24"></i>
+            <span>Next</span>
+        </button>
+    </div>
+
+    <script>
+        // --- CONFIG & GLOBALS ---
+        const DEFAULT_PDF_URL = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf'; // Demo PDF
+        const CHUNK_SIZE = 16 * 1024;
+        
+        // Viewer State
+        let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
+        let rotation = 0;
+        const canvas = document.getElementById('the-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('pdf-container');
+        
+        // Network State
+        let peer = null;
+        let connections = []; 
+        let isLeader = false;
+        let transferInProgress = false;
+        let leaderPdfBlob = null;
+        
+        // Incoming File State
+        let incomingChunks = []; 
+        let incomingSize = 0;
+        let totalExpectedSize = 0;
+
+        // Init Libraries
+        lucide.createIcons();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Auto-join Check
+        window.onload = () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('host')) {
+                document.getElementById('start-menu').classList.add('hidden');
+                document.getElementById('join-input').value = params.get('host');
+                joinGame(params.get('host'));
+            }
+        };
+
+        // --- PDF ENGINE (From Zvit Code) ---
+        
+        function getOptimalScale(page) {
+            const containerWidth = container.clientWidth - 20; 
+            const viewport = page.getViewport({ scale: 1, rotation: rotation });
+            const ratio = containerWidth / viewport.width;
+            const pixelRatio = window.devicePixelRatio || 1;
+            return ratio * pixelRatio;
+        }
+
+        async function renderPdf(source) {
+            try {
+                const loadingTask = pdfjsLib.getDocument(source);
+                pdfDoc = await loadingTask.promise;
+                document.getElementById('page_count').textContent = pdfDoc.numPages;
+                renderPage(pageNum);
+                return true;
+            } catch (e) {
+                console.error(e);
+                alert("PDF Load Error: " + e.message);
+                return false;
+            }
+        }
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(page => {
+                const displayScale = getOptimalScale(page);
+                const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = { canvasContext: ctx, viewport: viewport };
+                
+                page.render(renderContext).promise.then(() => {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            // Update UI
+            document.getElementById('page_num').textContent = num;
+            document.getElementById('prev').disabled = num <= 1;
+            document.getElementById('next').disabled = num >= pdfDoc.numPages;
+            container.scrollTop = 0; // Reset scroll
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) pageNumPending = num;
+            else renderPage(num);
+        }
+
+        // --- CONTROLS ---
+
+        function onPrevPage() {
+            if (!pdfDoc || pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+            if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
+        }
+
+        function onNextPage() {
+            if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+            if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
+        }
+
+        function onRotate() {
+            rotation += 90;
+            if (rotation >= 360) rotation = 0;
+            queueRenderPage(pageNum);
+            // Note: Rotation is NOT broadcasted. It's local preference.
+        }
+
+        function toggleQR() {
+            const modal = document.getElementById('qr-modal');
+            modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        // Resize Handler
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if(pdfDoc) renderPage(pageNum);
+            }, 200);
+        });
+
+        // --- LEADER LOGIC ---
+
+        function handleFileSelect(input) {
+            if (input.files[0]) {
+                leaderPdfBlob = input.files[0];
+                document.getElementById('file-name').innerText = leaderPdfBlob.name;
+                initLeader('custom');
+            }
+        }
+
+        function initLeader(mode) {
+            isLeader = true;
+            
+            // Render locally first
+            if (mode === 'default') renderPdf(DEFAULT_PDF_URL);
+            else if (leaderPdfBlob) renderPdf(URL.createObjectURL(leaderPdfBlob));
+            
+            peer = new Peer();
+            peer.on('open', id => {
+                document.getElementById('start-menu').classList.add('hidden');
+                document.getElementById('leader-menu').classList.remove('hidden');
+                
+                // Generate Links
+                const url = window.location.href.split('?')[0] + '?host=' + id;
+                document.getElementById('share-link').value = url;
+                
+                // QRs
+                new QRCode(document.getElementById("qr-container"), { text: url, width: 128, height: 128 });
+                new QRCode(document.getElementById("qrcode-modal-tgt"), { text: url, width: 200, height: 200 });
+                document.getElementById('qr-btn').classList.remove('hidden');
+
+                document.getElementById('btn-start-sync').disabled = false;
+            });
+
+            peer.on('connection', conn => {
+                const client = { id: conn.peer, conn: conn, ready: false };
+                connections.push(client);
+                updateClientList();
+
+                if (transferInProgress) {
+                    conn.on('open', () => syncSingleClient(client));
+                }
+
+                conn.on('data', data => {
+                    if (data.type === 'ACK_READY') {
+                        client.ready = true;
+                        updateClientList();
+                        checkGlobalSync();
+                    }
+                });
+
+                conn.on('close', () => {
+                    connections = connections.filter(c => c.conn !== conn);
+                    updateClientList();
+                });
+            });
+        }
+
+        function updateClientList() {
+            const list = document.getElementById('client-list');
+            if(connections.length === 0) {
+                list.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">Waiting for viewers...</div>';
+                document.getElementById('btn-start-sync').innerText = "Start Presentation";
+                return;
+            }
+            list.innerHTML = connections.map(c => `
+                <div class="client-row">
+                    <span>User ${c.id.substr(0,4)}</span>
+                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">
+                        ${c.ready ? 'Viewing' : 'Syncing'}
+                    </span>
+                </div>
+            `).join('');
+            
+            if(!transferInProgress) {
+                document.getElementById('btn-start-sync').innerText = `Start with ${connections.length} Viewer(s)`;
+            }
+        }
+
+        function startDistribution() {
+            if (connections.length === 0) return alert("Wait for connections!");
+            transferInProgress = true;
+            document.getElementById('btn-start-sync').style.display = 'none';
+            document.getElementById('sync-status').style.display = 'block';
+            connections.forEach(c => syncSingleClient(c));
+        }
+
+        function syncSingleClient(client) {
+            client.ready = false;
+            updateClientList();
+            
+            const mode = leaderPdfBlob ? 'custom' : 'default';
+            client.conn.send({ type: 'INIT', mode: mode });
+
+            if (mode === 'custom') {
+                sendFileRaw(client.conn, leaderPdfBlob);
+            }
+        }
+
+        function sendFileRaw(conn, blob) {
+            conn.send({ type: 'FILE_HEADER', size: blob.size });
+
+            let offset = 0;
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                if (conn.dataChannel.bufferedAmount > 16 * 1024 * 1024) {
+                    setTimeout(() => { conn.send(e.target.result); nextSlice(); }, 100);
+                    return;
+                }
+                try { conn.send(e.target.result); } catch(err) { console.error(err); }
+                offset += e.target.result.byteLength;
+                nextSlice();
+            };
+
+            function nextSlice() {
+                if (offset < blob.size) {
+                    if (conn.dataChannel.bufferedAmount > 64 * 1024) setTimeout(nextSlice, 10);
+                    else reader.readAsArrayBuffer(blob.slice(offset, offset + CHUNK_SIZE));
+                } else {
+                    conn.send({ type: 'FILE_END' });
+                }
+            }
+            nextSlice();
+        }
+
+        function checkGlobalSync() {
+            if (transferInProgress && connections.length > 0 && connections.every(c => c.ready)) {
+                // All synced. Close UI overlay.
+                document.getElementById('ui-layer').classList.add('hidden');
+                broadcast({ type: 'PAGE', value: pageNum });
+            }
+        }
+
+        function broadcast(msg) {
+            connections.forEach(c => { if(c.conn.open) c.conn.send(msg); });
+        }
+
+        // --- VIEWER LOGIC ---
+
+        function joinGame(id) {
+            const hostId = id || document.getElementById('join-input').value;
+            if (!hostId) return alert("ID Required");
+
+            document.getElementById('start-menu').classList.add('hidden');
+            document.getElementById('loading-menu').classList.remove('hidden');
+
+            peer = new Peer();
+            peer.on('open', () => {
+                const conn = peer.connect(hostId, { reliable: true });
+
+                conn.on('open', () => {
+                    document.getElementById('loading-msg').innerText = "Waiting for host...";
+                });
+
+                conn.on('data', async data => {
+                    // 1. Binary Chunk
+                    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+                        incomingChunks.push(data);
+                        incomingSize += data.byteLength || data.length;
+                        const pct = Math.floor((incomingSize / totalExpectedSize) * 100);
+                        document.getElementById('progress-bar-fill').style.width = pct + '%';
+                        document.getElementById('status-text').innerText = `${pct}%`;
+                        return;
+                    }
+
+                    // 2. Control Messages
+                    if (data.type === 'INIT') {
+                        if (data.mode === 'default') {
+                            document.getElementById('loading-msg').innerText = "Loading Standard PDF...";
+                            const ok = await renderPdf(DEFAULT_PDF_URL);
+                            if(ok) finishSetup();
+                        } else {
+                            document.getElementById('loading-msg').innerText = "Downloading PDF...";
+                            document.getElementById('progress-bar-container').style.display = 'block';
+                            incomingChunks = [];
+                            incomingSize = 0;
+                        }
+                    }
+
+                    if (data.type === 'FILE_HEADER') {
+                        totalExpectedSize = data.size;
+                    }
+
+                    if (data.type === 'FILE_END') {
+                        document.getElementById('loading-msg').innerText = "Processing PDF...";
+                        const blob = new Blob(incomingChunks, { type: 'application/pdf' });
+                        const ok = await renderPdf(URL.createObjectURL(blob));
+                        if (ok) finishSetup();
+                    }
+
+                    if (data.type === 'PAGE') {
+                        pageNum = data.value;
+                        if(pdfDoc) queueRenderPage(pageNum);
+                    }
+                });
+
+                function finishSetup() {
+                    conn.send({ type: 'ACK_READY' });
+                    document.getElementById('ui-layer').classList.add('hidden');
+                    // Enable QR modal for viewer too so they can share if they want
+                    const currentUrl = window.location.href;
+                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 200, height: 200 });
+                    document.getElementById('qr-btn').classList.remove('hidden');
+                }
+                
+                conn.on('close', () => alert("Host Disconnected"));
+            });
+        }
+
+        // Utils
+        function copyLink() {
+            document.getElementById('share-link').select();
+            document.execCommand('copy');
+            alert("Link Copied!");
+        }
+    </script>
+</body>
+</html>
