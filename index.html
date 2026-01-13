@@ -1,3 +1,5 @@
+--- START OF FILE index (30).html ---
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -219,10 +221,13 @@
         body.fullscreen-mode #pdf-container { padding-bottom: 0 !important; background: black; }
         body.fullscreen-mode #fs-controls { display: block !important; }
 
+        /* --- FIX: Display inline-block ensures wrapper hugs PDF content exactly --- */
         .canvas-wrapper {
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             background: white;
+            display: inline-block; /* IMPORTANT: Wraps strictly around canvas dimensions */
+            line-height: 0; /* Prevents ghost vertical spacing */
         }
         
         canvas#the-canvas { display: block; max-width: 100%; height: auto; }
@@ -583,21 +588,6 @@
                 <div id="progress-bar-fill" style="height: 100%; background: var(--color-attention-med); width: 0%; transition: width 0.2s;"></div>
             </div>
             <div id="status-text" style="font-size:1.1rem; color:#666; font-weight: 600;"></div>
-        </div>
-
-        <!-- DISCONNECT SCREEN -->
-        <div id="disconnect-menu" class="card hidden" style="border-color: var(--color-attention-high); justify-content: center; align-items: center;">
-            <i data-lucide="wifi-off" style="width:72px; height:72px; color: var(--color-attention-high); margin-bottom: 10px;"></i>
-            <h3>Зв'язок втрачено</h3>
-            <p style="margin: 15px 0; color: #555;">Ведучий відключився або виникла помилка мережі.</p>
-            
-            <button class="btn-primary" onclick="stayOffline()">
-                <i data-lucide="book-open"></i> ЧИТАТИ САМОСТІЙНО
-            </button>
-            
-            <button class="btn-secondary" onclick="location.reload()" style="margin-top: 10px;">
-                <i data-lucide="refresh-cw"></i> ПЕРЕПІДКЛЮЧИТИСЬ
-            </button>
         </div>
     </div>
 
@@ -1157,11 +1147,6 @@
             document.getElementById('zone-next').style.display = 'none';
         }
 
-        function stayOffline() {
-            document.getElementById('disconnect-menu').classList.add('hidden');
-            enterOfflineMode();
-        }
-
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
@@ -1433,16 +1418,7 @@
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                 }
                 
-                conn.on('close', () => { 
-                    // SHOW DISCONNECT SCREEN
-                    document.getElementById('ui-layer').classList.remove('hidden');
-                    document.getElementById('loading-menu').classList.add('hidden');
-                    document.getElementById('listener-menu').classList.add('hidden');
-                    
-                    const discMenu = document.getElementById('disconnect-menu');
-                    discMenu.classList.remove('hidden');
-                    lucide.createIcons(); // Refresh icons for this menu
-                });
+                conn.on('close', () => { /* Handle disconnect */ });
             });
         }
     </script>
