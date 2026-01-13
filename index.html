@@ -31,6 +31,9 @@
             --color-text: #000000;
             --color-border: #cccccc;
             --shadow: 0 4px 20px rgba(0,0,0,0.15);
+
+            /* ROTATION VARIABLE (Set via JS) */
+            --landscape-rotation: 90deg; 
         }
 
         * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -315,13 +318,10 @@
         }
 
         body.landscape-mode .btn-inner {
-            /* Rotate -90deg Counter-Clockwise (Standard Landscape - Top-Left Phone) */
-            /* This makes the text read Bottom-to-Top, which is Upright for the user holding the phone sideways */
-            transform: rotate(-90deg);
+            /* Use the CSS variable set via JS */
+            transform: rotate(var(--landscape-rotation));
             
             /* Swap Dimensions for Layout */
-            /* We want visual width to be 50px (Slot width) -> CSS Height */
-            /* We want visual height to be 75px (Toolbar height) -> CSS Width */
             width: 75px; 
             height: 50px; 
             
@@ -332,7 +332,7 @@
             margin-left: -37.5px; /* Half of width */
         }
 
-        body.landscape-mode #page-info { transform: rotate(-90deg); }
+        body.landscape-mode #page-info { transform: rotate(var(--landscape-rotation)); }
 
         /* --- FULL SCREEN CONTROLS LAYER --- */
         #fs-controls {
@@ -369,10 +369,10 @@
         #fs-hand:active { transform: scale(0.95); }
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
-        /* Rotate FS Controls in Landscape */
-        body.landscape-mode #fs-exit { transform: rotate(-90deg); }
-        body.landscape-mode #fs-hand { transform: rotate(-90deg); }
-        body.landscape-mode #fs-page-info { transform: rotate(-90deg); origin: center; }
+        /* Rotate FS Controls in Landscape using the variable */
+        body.landscape-mode #fs-exit { transform: rotate(var(--landscape-rotation)); }
+        body.landscape-mode #fs-hand { transform: rotate(var(--landscape-rotation)); }
+        body.landscape-mode #fs-page-info { transform: rotate(var(--landscape-rotation)); origin: center; }
 
         .file-label {
             font-size: 0.9rem; color: var(--color-attention-med); 
@@ -608,6 +608,11 @@
 
     <script>
         // --- CONFIG & GLOBALS ---
+        
+        // --- !!! CONFIGURATION: EDIT THIS VALUE !!! ---
+        // 90 = Clockwise, -90 = Counter-Clockwise, 0 = No Rotation
+        const LANDSCAPE_ROTATION_DEG = 90; 
+        
         const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
         const CHUNK_SIZE = 16 * 1024;
         
@@ -644,6 +649,9 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         window.onload = () => {
+            // Apply User Configured Rotation
+            document.documentElement.style.setProperty('--landscape-rotation', LANDSCAPE_ROTATION_DEG + 'deg');
+
             const params = new URLSearchParams(window.location.search);
             if (params.get('host')) {
                 document.getElementById('role-menu').classList.add('hidden');
@@ -760,7 +768,7 @@
                 
                 // --- ORIENTATION CHECK ---
                 // If the viewport width is greater than height, it's a "landscape" visual
-                // This usually implies user should hold phone sideways (Top to the Left).
+                // This usually implies user should hold phone sideways.
                 if (viewport.width > viewport.height) {
                     document.body.classList.add('landscape-mode');
                 } else {
