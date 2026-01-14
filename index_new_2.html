@@ -966,7 +966,7 @@
             return url; // Return original if no specific rule matches
         }
 
-        // --- PDF ENGINE ---
+        // --- PDF ENGINE (MULTI-STRATEGY LOAD) ---
         function getOptimalScale(page) {
             const containerWidth = container.clientWidth - 10; 
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
@@ -980,30 +980,50 @@
                 return false;
             }
 
-            const loadDocument = async (url) => {
-                const loadingTask = pdfjsLib.getDocument(url);
-                return await loadingTask.promise;
-            };
+            // Define Loading Strategies
+            // 1. Direct: Fastest, works for Same-Origin or properly CORS-configured files (GitHub Raw, Google Export)
+            // 2. CorsProxy: Works for files like Mintra.com that lack headers
+            // 3. AllOrigins: Backup proxy
+            const strategies = [
+                { name: "Direct", gen: (s) => s },
+                { name: "CorsProxy", gen: (s) => 'https://corsproxy.io/?' + encodeURIComponent(s) },
+                { name: "AllOrigins", gen: (s) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(s) }
+            ];
 
-            try {
-                // Attempt 1: Load URL directly
-                pdfDoc = await loadDocument(source);
-            } catch (e) {
-                console.warn("Direct load failed (CORS?), attempting proxy...", e);
+            let success = false;
+            let lastError = null;
+
+            // Iterate through strategies until one works
+            for (const strategy of strategies) {
+                if (success) break;
                 
-                // Attempt 2: Use CORS Proxy for generic URLs (GitHub, private servers, etc.)
-                if (typeof source === 'string' && !source.includes('corsproxy.io')) {
-                    try {
-                        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(source);
-                        pdfDoc = await loadDocument(proxyUrl);
-                    } catch (proxyError) {
-                        console.error("Proxy load failed", proxyError);
-                        alert("Не вдалося завантажити файл. Перевірте посилання або налаштування доступу (CORS).");
-                        return false;
-                    }
-                } else {
-                    return false;
+                // If source is not string (e.g. arraybuffer), only run first strategy and break
+                if (typeof source !== 'string') {
+                    if (strategy.name !== "Direct") break;
                 }
+
+                try {
+                    const url = typeof source === 'string' ? strategy.gen(source) : source;
+                    // Standard parameter object for best compatibility
+                    const loadingTask = pdfjsLib.getDocument({
+                        url: url,
+                        cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+                        cMapPacked: true
+                    });
+                    
+                    pdfDoc = await loadingTask.promise;
+                    success = true;
+                    // console.log(`Loaded via ${strategy.name}`);
+                } catch (e) {
+                    // console.warn(`Failed via ${strategy.name}`, e);
+                    lastError = e;
+                }
+            }
+
+            if (!success) {
+                console.error("All loading strategies failed", lastError);
+                alert("Не вдалося завантажити файл. Перевірте посилання або спробуйте інше джерело (CORS/Network Error).");
+                return false;
             }
 
             const num = pdfDoc.numPages;
