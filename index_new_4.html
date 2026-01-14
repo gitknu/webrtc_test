@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Синхро PDF</title>
+    
+    <!-- Fonts: Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            /* Functional Color Palette */
+            --color-bg: #f4f4f4;
+            --color-card: #ffffff;
+            
+            /* ATTENTION COLORS */
+            --color-attention-high: #b80000; /* Red: Main Actions, Listener, Errors */
+            --color-attention-med: #0b5394;  /* Blue: Secondary Actions, Speaker, Inputs */
+            --color-hand: #f59e0b; /* Amber for Hand Raise */
+            
+            --color-text: #000000;
+            --color-border: #cccccc;
+            --shadow: 0 4px 20px rgba(0,0,0,0.15);
+
+            /* ROTATION VARIABLE (Set via JS) */
+            --landscape-rotation: 0deg; 
+        }
+
+        * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+            overflow: hidden; 
+            height: 100vh; width: 100vw;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- UI OVERLAYS --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(244, 244, 244, 1); z-index: 200;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 15px;
+        }
+        
+        .card {
+            background: var(--color-card); 
+            color: var(--color-text);
+            padding: 1.5rem; 
+            border-radius: 1.2rem;
+            text-align: center; 
+            width: 100%; max-width: 450px;
+            /* Responsiveness: Fit screen, scroll inside only if needed */
+            max-height: 95vh; 
+            overflow-y: auto; 
+            box-shadow: var(--shadow);
+            border: 2px solid var(--color-border);
+            display: flex; flex-direction: column; gap: 1rem;
+        }
+        
+        .hidden { display: none !important; }
+
+        h3 { 
+            margin: 0;
+            color: var(--color-text); 
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+
+        p { margin: 0; font-size: 1rem; color: var(--color-text); line-height: 1.4; }
+        
+        /* --- ROLE BUTTONS (Adaptive Layout) --- */
+        #role-menu {
+            display: flex; flex-direction: column; gap: 15px;
+            width: 100%; max-width: 500px;
+            height: 100%; 
+            padding: 10px 0;
+            justify-content: center;
+        }
+
+        .role-btn {
+            flex: 1; /* Grow to fill space */
+            max-height: 45vh; /* Don't get too tall on tablets */
+            border: none; border-radius: 1.2rem;
+            font-family: 'Montserrat', sans-serif;
+            font-size: clamp(1.5rem, 5vw, 2.2rem); /* Responsive Font */
+            font-weight: 800;
+            color: white; cursor: pointer;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 15px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        .role-btn:active { transform: scale(0.97); }
+        
+        /* RED: Listener (Main Role) */
+        .role-listener { 
+            background-color: var(--color-attention-high); 
+            border: 2px solid var(--color-attention-high);
+        }
+        
+        /* BLUE: Speaker (Secondary Role) */
+        .role-speaker { 
+            background-color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med);
+        }
+        
+        /* --- BUTTONS & INPUTS --- */
+        
+        /* Primary Action (RED) */
+        button.btn-primary {
+            background: var(--color-attention-high); 
+            color: white; border: none;
+            padding: 1rem; 
+            font-size: 1.1rem; 
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3);
+            text-transform: uppercase;
+            flex-shrink: 0; /* Prevent crushing */
+        }
+        button.btn-primary:active { transform: scale(0.98); }
+        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+        /* Secondary Action (BLUE/WHITE) */
+        button.btn-secondary { 
+            background: white; 
+            color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med); 
+            padding: 0.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
+        }
+        button.btn-secondary:active { background: #f0f8ff; }
+
+        /* Inputs (BLUE Focus) */
+        input[type="text"] {
+            padding: 1rem; width: 100%;
+            background: #fff; 
+            border: 2px solid var(--color-attention-med);
+            color: var(--color-attention-med); 
+            border-radius: 0.8rem; 
+            outline: none;
+            font-size: 1.5rem; text-align: center;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            letter-spacing: 2px;
+            flex-shrink: 0;
+        }
+        
+        /* Specific style for URL input to accommodate long text */
+        input.url-input {
+            font-size: 1rem; 
+            font-weight: 500;
+            letter-spacing: 0;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        input[type="text"]::placeholder { color: #88a; font-weight: 400; font-size: 1.1rem; letter-spacing: 0; }
+        input[type="file"] { display: none; }
+
+        /* --- QR SCANNER CUSTOMIZATION --- */
+        #reader {
+            width: 100%;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid var(--color-attention-med);
+            flex-shrink: 0; /* Important: don't collapse */
+            min-height: 200px;
+        }
+        #reader video { object-fit: cover; border-radius: 1rem; }
+        
+        /* Force Library Button to be Red */
+        #reader button {
+            background-color: var(--color-attention-high) !important;
+            color: white !important;
+            border: none !important;
+            padding: 1rem !important;
+            border-radius: 0.5rem !important;
+            font-family: 'Montserrat', sans-serif !important;
+            font-weight: 600 !important;
+            margin-top: 10px !important;
+            width: 100% !important;
+        }
+        
+        #html5-qrcode-button-camera-stop, 
+        #html5-qrcode-anchor-scan-type-change, 
+        #reader__dashboard_section_csr span { display: none !important; }
+
+        /* --- PDF VIEWER & LAYOUT FIX --- */
+        #pdf-container {
+            flex: 1; /* Takes all available space between top and toolbar */
+            width: 100%;
+            overflow: hidden; /* Prevent scrolling outside the canvas area */
+            display: flex; 
+            justify-content: center; 
+            align-items: center; /* Center Vertically and Horizontally */
+            padding: 10px; /* Safe breathing room */
+            position: relative;
+            background: #e0e0e0;
+        }
+
+        /* Fullscreen Mode Adjustments */
+        body.fullscreen-mode #toolbar { display: none !important; }
+        body.fullscreen-mode #pdf-container { padding: 0 !important; background: black; }
+        body.fullscreen-mode #fs-controls { display: block !important; }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: white;
+            /* Wrapper will be sized by JS via canvas dimensions */
+        }
+        
+        canvas#the-canvas { display: block; max-width: 100%; height: auto; }
+        canvas#draw-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            touch-action: none; cursor: crosshair;
+            pointer-events: none; 
+        }
+
+        /* HAND OVERLAY (Speaker View) */
+        #hand-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--color-hand);
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 50;
+            font-weight: 700; color: #000;
+        }
+        
+        /* OFFLINE INDICATOR */
+        #offline-indicator {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(100, 100, 100, 0.9);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 250; /* Above UI layer if needed */
+            font-weight: 600; font-size: 0.9rem;
+        }
+        
+        /* Animations */
+        .bounce { animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+        
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .touch-zone { position: fixed; top: 0; bottom: 80px; width: 15%; z-index: 10; }
+        #zone-prev { left: 0; }
+        #zone-next { right: 0; }
+
+        /* Modal Base */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98); z-index: 300;
+            justify-content: center; align-items: center; flex-direction: column;
+            padding: 20px;
+        }
+        .modal-content { 
+            background: white; padding: 1.5rem; border-radius: 1.5rem; 
+            box-shadow: var(--shadow); border: 2px solid var(--color-attention-med);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            max-width: 90%;
+        }
+
+        /* --- TOOLBAR & ROTATION LOGIC --- */
+        #toolbar {
+            /* Changed from Fixed to Relative (Part of Flex Flow) to prevent overlay */
+            position: relative; 
+            width: 100%; 
+            height: 75px;
+            flex-shrink: 0; /* Prevent shrinking */
+            
+            background-color: var(--color-attention-med);
+            display: flex; justify-content: center; align-items: center;
+            gap: 2px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.2); z-index: 20;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        #page-info { 
+            color: white; font-size: 1rem; font-weight: 600; 
+            min-width: 45px; text-align: center; 
+            white-space: nowrap; margin: 0 2px;
+            transition: transform 0.3s ease;
+            /* Rotate based on variable always */
+            transform: rotate(var(--landscape-rotation));
+        }
+
+        .tool-btn {
+            background: none; border: none; color: white; cursor: pointer;
+            padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 1;
+            /* Default Portrait Width - Auto to fit text */
+            min-width: 44px;
+            height: 100%;
+            /* Allow content to overlap slightly in landscape if needed */
+            position: relative; 
+        }
+        .tool-btn:active .btn-inner { background-color: rgba(255,255,255,0.2); border-radius: 8px; }
+
+        /* Inner container for rotation */
+        .btn-inner {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 4px;
+            transition: transform 0.3s ease;
+            width: 100%; height: 100%;
+            position: relative; 
+            
+            /* GLOBAL ROTATION: Icons now always follow the variable */
+            transform: rotate(var(--landscape-rotation));
+        }
+
+        .btn-inner span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; white-space: nowrap; }
+        .tool-btn.danger { color: #ffcccc; } 
+        
+        .hand-active .btn-inner { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); border-radius: 8px; }
+        .hand-active i { fill: var(--color-hand); }
+
+        /* --- VISUAL TIMER LOADER (Hand) --- */
+        .hand-timer-svg {
+            position: absolute;
+            /* Default position for Toolbar (Icon + Text) */
+            top: 40%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            width: 36px; height: 36px;
+            pointer-events: none;
+            display: none; 
+            z-index: 0;
+            transition: top 0.2s; /* Smooth transition when text hides */
+        }
+
+        /* Adjust larger timer for Full Screen Button */
+        #fs-hand .hand-timer-svg {
+            top: 50%;
+            width: 60px; height: 60px;
+        }
+        
+        .hand-active .hand-timer-svg,
+        .fs-btn-active .hand-timer-svg {
+            display: block;
+        }
+
+        /* Hide text specifically in Toolbar button when active */
+        #btn-hand.hand-active span {
+            display: none;
+        }
+        /* Center the timer vertically when text is hidden */
+        #btn-hand.hand-active .hand-timer-svg {
+            top: 50%;
+        }
+
+        .hand-timer-path {
+            fill: none;
+            stroke: var(--color-hand);
+            stroke-width: 3;
+            /* 2 * pi * 15.9155 ~= 100 */
+            stroke-dasharray: 100, 100;
+            stroke-dashoffset: 0;
+        }
+
+        .hand-active .hand-timer-path,
+        .fs-btn-active .hand-timer-path {
+            animation: timeCircle 10s linear forwards;
+        }
+
+        @keyframes timeCircle {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 100; }
+        }
+
+        /* --- ROTATION MODES --- */
+        
+        /* Landscape Mode (active when PDF width > height) */
+        /* This handles LAYOUT adjustments (spacing), but rotation is now handled globally above */
+        body.landscape-mode .tool-btn {
+            /* Constrain slot width so buttons are spaced evenly along the "side" */
+            width: 50px; 
+            min-width: 50px;
+        }
+
+        body.landscape-mode .btn-inner {
+            /* Rotation is inherited from base class now */
+            
+            /* Swap Dimensions for Layout so text fits */
+            width: 75px; 
+            height: 50px; 
+            
+            /* Force centering for the "sideways" layout */
+            position: absolute;
+            top: 50%; left: 50%;
+            margin-top: -25px; /* Half of height */
+            margin-left: -37.5px; /* Half of width */
+        }
+
+        /* --- FULL SCREEN CONTROLS LAYER --- */
+        #fs-controls {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 150;
+        }
+        
+        #fs-exit, #fs-hand, #fs-page-info { pointer-events: auto; transition: transform 0.3s ease; }
+
+        #fs-exit {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            border: none; border-radius: 50%; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation));
+        }
+        
+        #fs-page-info {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem;
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation)); origin: center;
+        }
+
+        #fs-hand {
+            position: absolute; bottom: 30px; right: 20px;
+            background: white; color: #aaa;
+            border: 2px solid #ccc;
+            border-radius: 50%; width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            /* Global Rotation */
+            transform: rotate(var(--landscape-rotation));
+            /* Relative for Timer */
+            position: absolute; 
+        }
+        #fs-hand:active { transform: scale(0.95); }
+        .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
+
+        .file-label {
+            font-size: 0.9rem; color: var(--color-attention-med); 
+            word-break: break-all; font-weight: 600;
+            padding: 10px; border: 2px dashed var(--color-attention-med);
+            border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
+        }
+        
+        #client-list {
+            text-align: left; max-height: 150px; overflow-y: auto;
+            background: #f9f9f9; border: 1px solid #eee;
+            border-radius: 0.8rem; padding: 0.5rem; margin: 0;
+            width: 100%; flex-grow: 1; /* Fill available space in card */
+        }
+        .client-row { 
+            display: flex; justify-content: space-between; 
+            padding: 0.8rem; border-bottom: 1px solid #eee; 
+            font-size: 0.9rem; font-weight: 600;
+        }
+        .status-ready { color: var(--color-attention-high); font-weight: 700; }
+        .status-wait { color: var(--color-attention-med); }
+
+        /* ID Display Style */
+        .id-display {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--color-attention-med);
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px dashed var(--color-attention-med);
+            letter-spacing: 2px;
+            margin-top: 10px;
+            user-select: text;
+        }
+        .id-label {
+            font-size: 0.8rem; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: -5px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 1. UI LAYER -->
+    <div id="ui-layer">
+        
+        <!-- STEP 1: ROLE SELECTION -->
+        <div id="role-menu">
+            <!-- RED: Main Role -->
+            <button class="role-btn role-listener" onclick="setupListener()">
+                <div class="btn-inner">
+                    <i data-lucide="ear" width="72" height="72"></i>
+                    Я СЛУХАЧ
+                </div>
+            </button>
+            <!-- BLUE: Secondary Role -->
+            <button class="role-btn role-speaker" onclick="setupSpeaker()">
+                <div class="btn-inner">
+                    <i data-lucide="mic-2" width="72" height="72"></i>
+                    Я ВЕДУЧИЙ
+                </div>
+            </button>
+        </div>
+
+        <!-- STEP 2A: LISTENER SETUP -->
+        <div id="listener-menu" class="card hidden">
+            <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+                <i data-lucide="arrow-left"></i> Назад
+            </button>
+
+            <h3>Підключення</h3>
+            
+            <!-- Camera Container -->
+            <div id="reader"></div> 
+            
+            <p>Наведіть камеру на QR код</p>
+            
+            <div style="width:100%; height:1px; background:#eee;"></div>
+
+            <!-- BLUE: Input with ID Formatting -->
+            <input type="text" id="join-input" placeholder="000 000 000" inputmode="numeric">
+            
+            <!-- RED: Main Join Action -->
+            <button class="btn-primary" onclick="joinGame()">
+                <i data-lucide="link"></i> ПРИЄДНАТИСЬ
+            </button>
+        </div>
+
+        <!-- STEP 2B: SPEAKER SETUP -->
+        <div id="speaker-menu" class="card hidden">
+            <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
+                <i data-lucide="arrow-left"></i> Назад
+            </button>
+            
+            <h3>Кабінет Ведучого</h3>
+            
+            <!-- QR & ID -->
+            <div id="qr-container" style="background:white; padding:10px; display:inline-block; border: 2px solid var(--color-attention-med); border-radius: 10px;"></div>
+            
+            <div style="display:flex; flex-direction:column; gap:5px; width:100%;">
+                <span class="id-label">Код доступу</span>
+                <div id="meeting-id-display" class="id-display">...</div>
+            </div>
+
+            <!-- Users -->
+            <div id="client-list">
+                <div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>
+            </div>
+
+            <!-- File Upload / URL (BLUE - Secondary) -->
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                <div id="file-name" class="file-label hidden"></div>
+                
+                <!-- URL INPUT: Supports PDF, Google Slides, Dropbox, etc. -->
+                <input type="text" id="gdrive-input" class="url-input" placeholder="Google Slides / Drive / Web URL / PDF" oninput="handleUrlInput()">
+                
+                <div style="font-size:0.8rem; color:#666; margin-bottom: 5px;">Залиште пустим для стандартної презентації</div>
+            </div>
+
+            <!-- Start Button (RED - Main Action) -->
+            <button id="btn-start-sync" onclick="startDistribution()" class="btn-primary" disabled>
+                <i data-lucide="play"></i> ПОЧАТИ ВИСТУП
+            </button>
+            
+            <div id="sync-status" style="display:none; color: var(--color-attention-high); font-weight:700; font-size: 1.1rem;">
+                <i data-lucide="loader-2" class="spin"></i> Виступ триває...
+            </div>
+        </div>
+
+        <!-- LOADING SCREEN -->
+        <div id="loading-menu" class="card hidden" style="justify-content: center; border-color: var(--color-attention-med);">
+            <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-attention-med); width:64px; height:64px;"></i>
+            <h3 id="loading-msg">З'єднання...</h3>
+            <div id="progress-bar-container" style="width: 100%; background: #ddd; height: 16px; border-radius: 8px; overflow: hidden; display: none;">
+                <div id="progress-bar-fill" style="height: 100%; background: var(--color-attention-med); width: 0%; transition: width 0.2s;"></div>
+            </div>
+            <div id="status-text" style="font-size:1.1rem; color:#666; font-weight: 600;"></div>
+            
+            <!-- RELOAD BUTTON FOR LOADING SCREEN (Hard Reload as fallback) -->
+            <button class="btn-secondary" onclick="forceReload()" style="margin-top: 20px; border-color: #ccc; color: #666; width: auto;">
+                <i data-lucide="refresh-cw"></i> ОНОВИТИ
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN VIEWER -->
+    
+    <!-- Offline Indicator -->
+    <div id="offline-indicator" class="hidden">
+        <i data-lucide="wifi-off" width="20" height="20"></i>
+        <span>Offline Mode</span>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qr-modal" class="modal-overlay" onclick="toggleQR()">
+        <div id="qr-code-box" class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="margin-bottom: 15px;">Поділитися (Сторінка <span id="qr-page-num">1</span>)</h3>
+            <div id="qrcode-modal-tgt"></div>
+            <div id="qr-modal-id" class="id-display" style="font-size:1.5rem; margin-top:15px;"></div>
+            <button class="btn-secondary" style="margin-top:20px;" onclick="toggleQR()">ЗАКРИТИ</button>
+        </div>
+    </div>
+
+    <!-- Notification/Error Modal -->
+    <div id="notification-modal" class="modal-overlay" onclick="closeNotification()">
+        <div class="modal-content" onclick="event.stopPropagation()" style="border-color: var(--color-attention-high);">
+            <i data-lucide="alert-circle" width="64" height="64" style="color: var(--color-attention-high); margin-bottom: 10px;"></i>
+            <h3 id="notif-title" style="color: var(--color-attention-high);">Увага</h3>
+            <p id="notif-body" style="margin: 15px 0; font-weight: 500;">...</p>
+            <button class="btn-primary" style="margin-top: 10px;" onclick="closeNotification()">ЗРОЗУМІЛО</button>
+        </div>
+    </div>
+
+    <!-- Invisible Click Zones (Speaker Only technically, but kept for logic) -->
+    <div id="zone-prev" class="touch-zone" onclick="onPrevPage()"></div>
+    <div id="zone-next" class="touch-zone" onclick="onNextPage()"></div>
+
+    <!-- Full Screen Controls (Listener Only) -->
+    <div id="fs-controls">
+        <div id="fs-page-info">
+            <span id="fs_page_num">--</span> / <span id="fs_page_count">--</span>
+        </div>
+        <button id="fs-exit" onclick="exitFullScreen()">
+            <i data-lucide="minimize" width="24" height="24"></i>
+        </button>
+        
+        <!-- Updated Hand Button with SVG Timer -->
+        <button id="fs-hand" onclick="toggleHand()">
+            <svg class="hand-timer-svg" viewBox="0 0 36 36">
+                <path class="hand-timer-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <i data-lucide="hand" width="32" height="32"></i>
+        </button>
+    </div>
+
+    <!-- PDF Container -->
+    <div id="pdf-container">
+        <!-- Hand Overlay (Speaker View) -->
+        <div id="hand-overlay" class="hidden bounce">
+            <i data-lucide="hand" width="24" height="24" fill="#f59e0b" stroke="none"></i>
+            <span id="hand-count">0</span>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="the-canvas"></canvas>
+            <canvas id="draw-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <!-- Common -->
+        <button class="tool-btn" onclick="toggleQR()">
+            <div class="btn-inner">
+                <i data-lucide="qr-code" width="24" height="24"></i>
+                <span>QR</span>
+            </div>
+        </button>
+
+        <!-- Speaker: Users Count -->
+        <div class="tool-btn spk-only hidden" id="user-count-display">
+            <div class="btn-inner">
+                <i data-lucide="users" width="24" height="24"></i>
+                <span id="user-count-val">0</span>
+            </div>
+        </div>
+
+        <!-- Listener: Raise Hand (Updated with SVG Timer & Hidden text logic) -->
+        <button class="tool-btn lst-only hidden" id="btn-hand" onclick="toggleHand()">
+            <div class="btn-inner">
+                <svg class="hand-timer-svg" viewBox="0 0 36 36">
+                    <path class="hand-timer-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <i data-lucide="hand" width="24" height="24"></i>
+                <span>Рука</span>
+            </div>
+        </button>
+        
+        <!-- Listener: Resync (Soft Reload) -->
+        <button class="tool-btn lst-only hidden" onclick="triggerResync()">
+            <div class="btn-inner">
+                <i data-lucide="refresh-cw" width="24" height="24"></i>
+                <span id="resync-text">Оновити</span>
+            </div>
+        </button>
+
+        <!-- Listener: Full Screen -->
+        <button class="tool-btn lst-only hidden" onclick="enterFullScreen()">
+            <div class="btn-inner">
+                <i data-lucide="maximize" width="24" height="24"></i>
+                <span>Full</span>
+            </div>
+        </button>
+
+        <!-- Speaker OR Offline Listener: Prev -->
+        <button class="tool-btn spk-only hidden" id="prev" onclick="onPrevPage()">
+            <div class="btn-inner">
+                <i data-lucide="arrow-left" width="24" height="24"></i>
+                <span>Назад</span>
+            </div>
+        </button>
+
+        <!-- Common: Page Info -->
+        <div id="page-info">
+            <span id="page_num">--</span> / <span id="page_count">--</span>
+        </div>
+
+        <!-- Speaker OR Offline Listener: Next -->
+        <button class="tool-btn spk-only hidden" id="next" onclick="onNextPage()">
+            <div class="btn-inner">
+                <i data-lucide="arrow-right" width="24" height="24"></i>
+                <span>Далі</span>
+            </div>
+        </button>
+
+        <!-- Common: Rotate -->
+        <button class="tool-btn" id="rotate" onclick="onRotate()">
+            <div class="btn-inner">
+                <i data-lucide="rotate-cw" width="24" height="24"></i>
+                <span>Оберт</span>
+            </div>
+        </button>
+
+        <!-- Speaker: Clear -->
+        <button class="tool-btn danger spk-only hidden" id="eraser-btn" onclick="clearDrawings(true)">
+            <div class="btn-inner">
+                <i data-lucide="eraser" width="24" height="24"></i>
+                <span>Стерти</span>
+            </div>
+        </button>
+    </div>
+
+    <script>
+        // --- CONFIG & GLOBALS ---
+        
+        // --- !!! CONFIGURATION: EDIT THIS VALUE !!! ---
+        const LANDSCAPE_ROTATION_DEG = 0; 
+        const APP_PREFIX = "synchro_pdf_"; // Prefix to ensure unique namespace on PeerJS server
+        
+        const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
+        
+        let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
+        let rotation = 0;
+        
+        const pdfCanvas = document.getElementById('the-canvas');
+        const pdfCtx = pdfCanvas.getContext('2d');
+        const drawCanvas = document.getElementById('draw-canvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        const container = document.getElementById('pdf-container');
+        
+        let peer = null;
+        let connections = []; // { id, conn, ready, handRaised, lastPong }
+        let isLeader = false;
+        let transferInProgress = false;
+        let activeSourceUrl = null; // Stores the URL being used
+        let myIdRaw = null; // Store Short Numeric ID
+        let currentHostId = null; // Stores host ID for Listener reload
+        
+        // Listener specific globals
+        let myHandRaised = false;
+        let hostConnection = null;
+        let handTimeout = null; // Stores the timeout ID for auto-lowering
+        
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let pageMarks = {};
+
+        let html5QrcodeScanner = null;
+
+        lucide.createIcons();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- INPUT MASKING (XXX XXX XXX) ---
+        document.getElementById('join-input').addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})/);
+            e.target.value = !x[2] ? x[1] : x[1] + ' ' + x[2] + (x[3] ? ' ' + x[3] : '');
+        });
+
+        window.onload = () => {
+            document.documentElement.style.setProperty('--landscape-rotation', LANDSCAPE_ROTATION_DEG + 'deg');
+
+            const params = new URLSearchParams(window.location.search);
+            // Offline Mode / Late Join: Try to render page from URL immediately
+            if (params.get('p')) {
+                pageNum = parseInt(params.get('p')) || 1;
+                // Attempt to render default PDF instantly for "Offline mode" experience
+                renderPdf(DEFAULT_PDF_URL).catch(() => {});
+            }
+
+            if (params.get('host')) {
+                document.getElementById('role-menu').classList.add('hidden');
+                joinGame(params.get('host'));
+            }
+            initDrawingListeners();
+        };
+
+        function forceReload() {
+            // Hard reload for loading screen
+            window.location.reload();
+        }
+
+        function triggerResync() {
+            // Soft sync for active session
+            if(hostConnection && hostConnection.open) {
+                // Visual feedback: Spin icon
+                const btnIcon = document.querySelector('.btn-inner i[data-lucide="refresh-cw"]');
+                if(btnIcon) btnIcon.classList.add('spin');
+                
+                // Request current state from host
+                hostConnection.send({ type: 'RESYNC_REQ' });
+                
+                // Remove spin after delay
+                setTimeout(() => {
+                     if(btnIcon) btnIcon.classList.remove('spin');
+                }, 1000);
+            } else {
+                 // If connection died, use hard reload
+                 if(confirm("З'єднання втрачено. Перезавантажити сторінку?")) {
+                     window.location.reload();
+                 }
+            }
+        }
+
+        // --- NOTIFICATION UI ---
+        function showNotification(msg, isError = false) {
+            const modal = document.getElementById('notification-modal');
+            const title = document.getElementById('notif-title');
+            const body = document.getElementById('notif-body');
+            const icon = modal.querySelector('i');
+
+            if (isError) {
+                title.innerText = "Помилка";
+                icon.setAttribute('data-lucide', 'alert-circle');
+                modal.querySelector('.modal-content').style.borderColor = 'var(--color-attention-high)';
+                title.style.color = 'var(--color-attention-high)';
+                icon.style.color = 'var(--color-attention-high)';
+            } else {
+                title.innerText = "Інформація";
+                icon.setAttribute('data-lucide', 'info');
+                modal.querySelector('.modal-content').style.borderColor = 'var(--color-attention-med)';
+                title.style.color = 'var(--color-attention-med)';
+                icon.style.color = 'var(--color-attention-med)';
+            }
+            
+            body.innerText = msg;
+            lucide.createIcons();
+            modal.style.display = 'flex';
+        }
+
+        function closeNotification() {
+            document.getElementById('notification-modal').style.display = 'none';
+        }
+
+        // --- FULL SCREEN LOGIC ---
+        function enterFullScreen() {
+            document.body.classList.add('fullscreen-mode');
+            const el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        }
+
+        function exitFullScreen() {
+            document.body.classList.remove('fullscreen-mode');
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.body.classList.remove('fullscreen-mode');
+            }
+        });
+
+        // --- UI FLOW & TOOLBAR ---
+        function updateToolbarForRole() {
+            const spkBtns = document.querySelectorAll('.spk-only');
+            const lstBtns = document.querySelectorAll('.lst-only');
+            
+            if (isLeader) {
+                spkBtns.forEach(el => el.classList.remove('hidden'));
+                lstBtns.forEach(el => el.classList.add('hidden'));
+                document.getElementById('zone-prev').style.display = 'block';
+                document.getElementById('zone-next').style.display = 'block';
+            } else {
+                spkBtns.forEach(el => el.classList.add('hidden'));
+                lstBtns.forEach(el => el.classList.remove('hidden'));
+                document.getElementById('zone-prev').style.display = 'none';
+                document.getElementById('zone-next').style.display = 'none';
+            }
+        }
+
+        function setupListener() {
+            document.getElementById('role-menu').classList.add('hidden');
+            document.getElementById('listener-menu').classList.remove('hidden');
+            isLeader = false;
+            updateToolbarForRole();
+
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function onScanSuccess(decodedText) {
+            let hostId = decodedText;
+            let p = null;
+            try {
+                const url = new URL(decodedText);
+                const params = new URLSearchParams(url.search);
+                if(params.get('host')) hostId = params.get('host');
+                if(params.get('p')) p = params.get('p');
+            } catch(e) {}
+            
+            if(html5QrcodeScanner) html5QrcodeScanner.clear();
+            joinGame(hostId, p);
+        }
+
+        function onScanFailure(error) { /* Ignore */ }
+
+        function setupSpeaker() {
+            document.getElementById('role-menu').classList.add('hidden');
+            initLeader();
+        }
+
+        function handleUrlInput() {
+            const urlVal = document.getElementById('gdrive-input').value.trim();
+            const lbl = document.getElementById('file-name');
+            if (urlVal) {
+                 lbl.innerText = "URL: " + (urlVal.length > 30 ? urlVal.substr(0, 30) + '...' : urlVal);
+                 lbl.classList.remove('hidden');
+            } else {
+                lbl.classList.add('hidden');
+            }
+        }
+
+        // --- HELPER: NORMALIZE URLs (Drive, Dropbox, GitHub, etc.) ---
+        function normalizePresentationUrl(url) {
+            if (!url) return null;
+
+            // 1. Google Drive / Slides / Docs
+            if (url.includes('google.com')) {
+                // Regex to find ID
+                const idRegex = /\/d\/([a-zA-Z0-9_-]+)/;
+                const match = url.match(idRegex);
+                const id = match ? match[1] : null;
+
+                if (id) {
+                    if (url.includes('presentation')) {
+                        // Google Slides -> PDF Export
+                        return `https://docs.google.com/presentation/d/${id}/export/pdf`;
+                    }
+                    if (url.includes('document')) {
+                        // Google Docs -> PDF Export
+                        return `https://docs.google.com/document/d/${id}/export?format=pdf`;
+                    }
+                    // Generic Drive "View" or "Open" link -> Export attempt
+                    if (url.includes('view') || url.includes('open') || url.includes('/file/d/')) {
+                        return `https://drive.google.com/uc?export=download&id=${id}`;
+                    }
+                }
+            }
+
+            // 2. Dropbox (Convert 'www.dropbox.com' -> 'dl.dropboxusercontent.com' for direct access)
+            if (url.includes('dropbox.com')) {
+                return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
+            }
+
+            // 3. GitHub (Convert blob view -> raw user content)
+            if (url.includes('github.com') && url.includes('/blob/')) {
+                return url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            }
+
+            // 4. OneDrive (Try to convert share links - basic attempt)
+            if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) {
+                // If it doesn't have download param, try appending it
+                if (!url.includes('download=1')) {
+                    if (url.includes('?')) return url + '&download=1';
+                    else return url + '?download=1';
+                }
+            }
+
+            return url; // Return original if no specific rule matches
+        }
+
+        // --- PDF ENGINE ---
+        function getOptimalScale(page) {
+            // Get dimensions of the viewing area (container)
+            // Subtract small padding to prevent edge touches
+            const containerWidth = container.clientWidth - 20; 
+            const containerHeight = container.clientHeight - 20;
+
+            const viewport = page.getViewport({ scale: 1, rotation: rotation });
+
+            // Calculate ratio for both width and height
+            const scaleX = containerWidth / viewport.width;
+            const scaleY = containerHeight / viewport.height;
+
+            // Use the smaller ratio to ensure "Fit to Screen" (Contain) behavior
+            // This guarantees the slide fits entirely within the clean zone without overlay
+            let scale = Math.min(scaleX, scaleY);
+
+            return scale * (window.devicePixelRatio || 1);
+        }
+
+        async function renderPdf(source) {
+            // Check for raw PPTX inputs which browser cannot render
+            if (typeof source === 'string' && (source.includes('.ppt') || source.includes('.pptx')) && !source.includes('google.com')) {
+                showNotification("Браузер не відображає PPT/PPTX напряму. Будь ласка, використовуйте посилання на Google Slides або експортуйте файл у PDF.", true);
+                return false;
+            }
+
+            try {
+                // Standard Direct Load
+                const loadingTask = pdfjsLib.getDocument({
+                    url: source,
+                    cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true
+                });
+                
+                pdfDoc = await loadingTask.promise;
+                const num = pdfDoc.numPages;
+                document.getElementById('page_count').textContent = num;
+                document.getElementById('fs_page_count').textContent = num; 
+                renderPage(pageNum);
+                return true;
+            } catch (e) {
+                console.error("PDF Load Failed:", e);
+                // Friendly error message instead of generic alert
+                showNotification("Не вдалося завантажити файл. Перевірте посилання або права доступу (CORS). Для Google Drive переконайтеся, що файл доступний 'Для всіх, хто має посилання'.", true);
+                return false;
+            }
+        }
+
+        function renderPage(num) {
+            if(pdfDoc && num > pdfDoc.numPages) num = pdfDoc.numPages;
+            if(num < 1) num = 1;
+            pageNum = num;
+
+            pageRendering = true;
+            pdfDoc.getPage(num).then(page => {
+                const displayScale = getOptimalScale(page);
+                const viewport = page.getViewport({ scale: displayScale, rotation: rotation });
+                
+                document.documentElement.style.setProperty('--landscape-rotation', rotation + 'deg');
+                
+                if (viewport.width > viewport.height) {
+                    document.body.classList.add('landscape-mode');
+                } else {
+                    document.body.classList.remove('landscape-mode');
+                }
+                
+                pdfCanvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
+                drawCanvas.height = viewport.height;
+                drawCanvas.width = viewport.width;
+                
+                drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+                drawCtx.lineWidth = 4; drawCtx.strokeStyle = '#b80000'; 
+
+                const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+                page.render(renderContext).promise.then(() => {
+                    pageRendering = false;
+                    redrawStoredLines(num);
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            document.getElementById('page_num').textContent = num;
+            document.getElementById('fs_page_num').textContent = num;
+            
+            if(isLeader) {
+                document.getElementById('prev').disabled = num <= 1;
+                document.getElementById('next').disabled = num >= pdfDoc.numPages;
+                updateQRCodes(); // UPDATE QR ON PAGE CHANGE
+            }
+            container.scrollTop = 0; 
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) pageNumPending = num; else renderPage(num);
+        }
+
+        // --- HANDLER LOGIC ---
+        function toggleHand() {
+            if (!hostConnection) return;
+            
+            // Clear existing auto-lower timer if user clicks manually
+            if (handTimeout) {
+                clearTimeout(handTimeout);
+                handTimeout = null;
+            }
+
+            myHandRaised = !myHandRaised;
+            
+            const btn = document.getElementById('btn-hand');
+            if (myHandRaised) btn.classList.add('hand-active');
+            else btn.classList.remove('hand-active');
+
+            const fsBtn = document.getElementById('fs-hand');
+            if (myHandRaised) fsBtn.classList.add('fs-btn-active');
+            else fsBtn.classList.remove('fs-btn-active');
+            
+            hostConnection.send({ type: 'HAND', value: myHandRaised });
+
+            // Auto-lower hand after 10 seconds
+            if (myHandRaised) {
+                handTimeout = setTimeout(() => {
+                    myHandRaised = false;
+                    
+                    document.getElementById('btn-hand').classList.remove('hand-active');
+                    document.getElementById('fs-hand').classList.remove('fs-btn-active');
+                    
+                    if (hostConnection) {
+                        hostConnection.send({ type: 'HAND', value: false });
+                    }
+                    handTimeout = null;
+                }, 10000); // 10000ms = 10s
+            }
+        }
+
+        function updateHandOverlay() {
+            if (!isLeader) return;
+            const count = connections.filter(c => c.handRaised).length;
+            const overlay = document.getElementById('hand-overlay');
+            const counter = document.getElementById('hand-count');
+            
+            counter.innerText = count;
+            if (count > 0) overlay.classList.remove('hidden');
+            else overlay.classList.add('hidden');
+        }
+
+        // --- DRAWING ---
+        function initDrawingListeners() {
+            drawCanvas.addEventListener('mousedown', startDrawing);
+            drawCanvas.addEventListener('mousemove', draw);
+            drawCanvas.addEventListener('mouseup', stopDrawing);
+            drawCanvas.addEventListener('mouseout', stopDrawing);
+            drawCanvas.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 1) { e.preventDefault(); startDrawing(e.touches[0]); }
+            });
+            drawCanvas.addEventListener('touchmove', (e) => {
+                if(e.touches.length === 1) { e.preventDefault(); draw(e.touches[0]); }
+            });
+            drawCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function getPos(e) {
+            const rect = drawCanvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (drawCanvas.width / rect.width),
+                y: (e.clientY - rect.top) * (drawCanvas.height / rect.height)
+            };
+        }
+
+        function startDrawing(e) {
+            if (!isLeader) return;
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x; lastY = pos.y;
+            performDraw(lastX, lastY, lastX, lastY, true);
+        }
+
+        function draw(e) {
+            if (!isDrawing || !isLeader) return;
+            const pos = getPos(e);
+            performDraw(lastX, lastY, pos.x, pos.y, true);
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function stopDrawing() { isDrawing = false; }
+
+        function performDraw(x0, y0, x1, y1, emit) {
+            const w = drawCanvas.width; const h = drawCanvas.height;
+            drawCtx.beginPath();
+            drawCtx.moveTo(x0, y0); drawCtx.lineTo(x1, y1); drawCtx.stroke();
+            if (emit && isLeader) {
+                const normCoords = [x0 / w, y0 / h, x1 / w, y1 / h];
+                if (!pageMarks[pageNum]) pageMarks[pageNum] = [];
+                pageMarks[pageNum].push(normCoords);
+                broadcast({ type: 'DRAW', coords: normCoords });
+            }
+        }
+
+        function receiveDraw(nx0, ny0, nx1, ny1) {
+            const w = drawCanvas.width; const h = drawCanvas.height;
+            if (!pageMarks[pageNum]) pageMarks[pageNum] = [];
+            pageMarks[pageNum].push([nx0, ny0, nx1, ny1]);
+            drawCtx.beginPath();
+            drawCtx.moveTo(nx0 * w, ny0 * h); drawCtx.lineTo(nx1 * w, ny1 * h); drawCtx.stroke();
+        }
+
+        function redrawStoredLines(pNum) {
+            if (!pageMarks[pNum]) return;
+            const w = drawCanvas.width; const h = drawCanvas.height;
+            drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = 4; drawCtx.strokeStyle = '#b80000';
+            drawCtx.beginPath();
+            pageMarks[pNum].forEach(line => {
+                drawCtx.moveTo(line[0] * w, line[1] * h);
+                drawCtx.lineTo(line[2] * w, line[3] * h);
+            });
+            drawCtx.stroke();
+        }
+
+        function clearDrawings(emit) {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            if (emit) {
+                pageMarks[pageNum] = [];
+                if (isLeader) broadcast({ type: 'CLEAR' });
+            }
+        }
+
+        // --- CONTROLS ---
+        function onPrevPage() {
+            if (!pdfDoc || pageNum <= 1) return;
+            pageNum--;
+            clearDrawings(false);
+            queueRenderPage(pageNum);
+            if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
+        }
+
+        function onNextPage() {
+            if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            clearDrawings(false);
+            queueRenderPage(pageNum);
+            if (isLeader) broadcast({ type: 'PAGE', value: pageNum });
+        }
+
+        function onRotate() {
+            rotation += 90;
+            if (rotation >= 360) rotation = 0;
+            clearDrawings(false); queueRenderPage(pageNum);
+        }
+
+        function toggleQR() {
+            const modal = document.getElementById('qr-modal');
+            modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+        }
+        
+        // --- QR & ID GENERATION ---
+        function formatId(id) {
+            // Formats 123456789 into 123 456 789
+            if (!id) return "...";
+            return id.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+        }
+
+        function updateQRCodes() {
+            if(!myIdRaw) return;
+            // Build URL with raw numeric ID
+            const baseUrl = window.location.href.split('?')[0];
+            const fullUrl = `${baseUrl}?host=${myIdRaw}&p=${pageNum}`;
+            
+            document.getElementById("qr-container").innerHTML = "";
+            document.getElementById("qrcode-modal-tgt").innerHTML = "";
+            document.getElementById("qr-page-num").innerText = pageNum;
+            
+            // Display Formatted Short ID
+            const fmtId = formatId(myIdRaw);
+            document.getElementById('meeting-id-display').innerText = fmtId;
+            document.getElementById('qr-modal-id').innerText = fmtId;
+
+            new QRCode(document.getElementById("qr-container"), { text: fullUrl, width: 150, height: 150, colorDark: "#000000" });
+            new QRCode(document.getElementById("qrcode-modal-tgt"), { text: fullUrl, width: 250, height: 250, colorDark: "#000000" });
+        }
+
+        // --- OFFLINE MODE HELPERS ---
+        function enterOfflineMode() {
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('offline-indicator').classList.remove('hidden');
+            
+            // Allow manual navigation for offline user
+            document.getElementById('prev').classList.remove('hidden');
+            document.getElementById('next').classList.remove('hidden');
+            document.getElementById('zone-prev').style.display = 'block';
+            document.getElementById('zone-next').style.display = 'block';
+        }
+
+        function exitOfflineMode() {
+            document.getElementById('offline-indicator').classList.add('hidden');
+            // Hide manual navigation (Listener becomes passive)
+            document.getElementById('prev').classList.add('hidden');
+            document.getElementById('next').classList.add('hidden');
+            document.getElementById('zone-prev').style.display = 'none';
+            document.getElementById('zone-next').style.display = 'none';
+        }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if(pdfDoc) { clearDrawings(false); renderPage(pageNum); }
+            }, 200);
+        });
+
+        // --- PEER JS LOGIC ---
+
+        function generateShortId() {
+            // Generate a 9 digit number string
+            const min = 100000000;
+            const max = 999999999;
+            return Math.floor(Math.random() * (max - min + 1) + min).toString();
+        }
+
+        function initLeader() {
+            isLeader = true;
+            updateToolbarForRole();
+            document.getElementById('speaker-menu').classList.remove('hidden');
+            drawCanvas.style.pointerEvents = 'auto';
+
+            // Generate a Short Numeric ID
+            myIdRaw = generateShortId();
+            // Prefix it for PeerJS to avoid global collision on public server
+            const peerJsId = APP_PREFIX + myIdRaw;
+
+            peer = new Peer(peerJsId);
+
+            peer.on('open', id => {
+                updateQRCodes();
+                document.getElementById('btn-start-sync').disabled = false;
+            });
+
+            // If ID is taken (rare with 9 digits but possible), retry
+            peer.on('error', (err) => {
+                if(err.type === 'unavailable-id') {
+                    console.log("ID collision, retrying...");
+                    peer.destroy();
+                    setTimeout(initLeader, 200);
+                } else {
+                    showNotification("Помилка з'єднання: " + err.type, true);
+                }
+            });
+
+            // --- HEARTBEAT / MESH-LIKE BROADCAST SYSTEM ---
+            
+            // 1. Roll Call Loop (Every 2s): "Who is listening?" & "Here is the current page"
+            setInterval(() => {
+                if(!isLeader) return;
+                
+                // Broadcast "Heartbeat" + "Current State"
+                // This acts as a continuous sync mechanism (Mesh-like reliability)
+                connections.forEach(c => {
+                    if(c.conn.open) {
+                        c.conn.send({ type: 'HEARTBEAT', page: pageNum });
+                    }
+                });
+                
+                // 2. Pruning Loop: Remove dead connections (fix counter)
+                const now = Date.now();
+                const beforeCount = connections.length;
+                
+                connections = connections.filter(c => {
+                    // If no PONG for 10 seconds, remove user
+                    return (now - c.lastPong) < 10000;
+                });
+                
+                if(connections.length !== beforeCount) {
+                    updateClientList();
+                    updateHandOverlay();
+                }
+                
+            }, 2000);
+
+            peer.on('connection', conn => {
+                // 1. Remove duplicate IDs
+                connections = connections.filter(c => c.id !== conn.peer);
+                
+                const client = { 
+                    id: conn.peer, 
+                    conn: conn, 
+                    ready: false, 
+                    handRaised: false,
+                    lastPong: Date.now() // Initialize alive timestamp
+                };
+                connections.push(client);
+                updateClientList();
+
+                conn.on('open', () => {
+                    // 2. LATE JOIN LOGIC
+                    if (transferInProgress) {
+                        syncSingleClient(client);
+                    }
+                });
+
+                conn.on('data', data => {
+                    // Update heartbeat timestamp on ANY data received
+                    client.lastPong = Date.now();
+                    
+                    if (data.type === 'PONG') {
+                        // Just a keep-alive response
+                        return; 
+                    }
+
+                    if (data.type === 'ACK_READY') {
+                        client.ready = true;
+                        updateClientList();
+                        
+                        // 3. FORCE STATE UPDATE
+                        if(transferInProgress) {
+                            conn.send({ type: 'PAGE', value: pageNum });
+                            if(pageMarks[pageNum]) {
+                                pageMarks[pageNum].forEach(line => {
+                                   conn.send({ type: 'DRAW', coords: line }); 
+                                });
+                            }
+                        }
+                    }
+                    if (data.type === 'HAND') {
+                        client.handRaised = data.value;
+                        updateHandOverlay();
+                    }
+                    
+                    // --- RESYNC REQUEST HANDLER ---
+                    if (data.type === 'RESYNC_REQ') {
+                        // Send Page
+                        conn.send({ type: 'PAGE', value: pageNum });
+                        // Send Drawings for current page
+                        if(pageMarks[pageNum]) {
+                            pageMarks[pageNum].forEach(line => {
+                                conn.send({ type: 'DRAW', coords: line });
+                            });
+                        }
+                    }
+                });
+
+                conn.on('close', () => {
+                    connections = connections.filter(c => c.conn !== conn);
+                    updateClientList();
+                    updateHandOverlay();
+                });
+            });
+        }
+
+        function updateClientList() {
+            document.getElementById('user-count-val').innerText = connections.length;
+            const list = document.getElementById('client-list');
+            if(connections.length === 0) {
+                list.innerHTML = '<div style="padding:15px; text-align:center; color:#888;">Чекаємо глядачів...</div>';
+                return;
+            }
+            list.innerHTML = connections.map(c => `
+                <div class="client-row">
+                    <span>Глядач ${c.id.substr(0,4)}</span>
+                    <span class="${c.ready ? 'status-ready' : 'status-wait'}">
+                        ${c.ready ? 'Готовий' : 'Синхро'}
+                    </span>
+                </div>
+            `).join('');
+            
+            if(!transferInProgress) {
+                document.getElementById('btn-start-sync').innerHTML = `<i data-lucide="play"></i> ПОЧАТИ (${connections.length})`;
+                lucide.createIcons();
+            }
+        }
+
+        async function startDistribution() {
+            const driveInput = document.getElementById('gdrive-input').value.trim();
+            
+            // 1. Normalize Input (handle Drive, Slides, Dropbox, etc.)
+            activeSourceUrl = normalizePresentationUrl(driveInput) || DEFAULT_PDF_URL;
+
+            // Render Locally First
+            const success = await renderPdf(activeSourceUrl);
+            
+            if (!success) return; // Stop if failed
+
+            transferInProgress = true;
+            
+            // Hide UI Immediately for Speaker
+            document.getElementById('ui-layer').classList.add('hidden');
+            
+            // Sync anyone currently connected
+            connections.forEach(c => syncSingleClient(c));
+        }
+
+        function syncSingleClient(client) {
+            client.ready = false;
+            updateClientList();
+            
+            if (!client.conn.open) return;
+
+            // Simple URL Sync
+            client.conn.send({ type: 'INIT', url: activeSourceUrl });
+        }
+
+        function broadcast(msg) {
+            connections.forEach(c => { if(c.conn.open) c.conn.send(msg); });
+        }
+
+        function joinGame(id, pageParam) {
+            let hostId = id || document.getElementById('join-input').value;
+            
+            // Strip spaces from input for connection
+            hostId = hostId.replace(/\s/g, '');
+
+            if (!hostId) return showNotification("Потрібен ID або QR код для підключення", true);
+            
+            // Add Prefix if it's a numeric ID (manual entry or QR with raw number)
+            if (!hostId.startsWith(APP_PREFIX)) {
+                hostId = APP_PREFIX + hostId;
+            }
+
+            // --- REFRESH LOGIC UPDATE ---
+            // Save short ID to global variable for reload button
+            currentHostId = hostId.replace(APP_PREFIX, ''); 
+            
+            // Update the browser URL without reloading so a standard refresh also works
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?host=' + currentHostId;
+            window.history.replaceState({path: newUrl}, '', newUrl);
+            // ----------------------------
+
+            if(pageParam) pageNum = parseInt(pageParam);
+
+            // Hide main menu, show loading
+            document.getElementById('listener-menu').classList.add('hidden');
+            document.getElementById('loading-menu').classList.remove('hidden');
+            isLeader = false;
+            updateToolbarForRole();
+
+            // OFFLINE MODE CHECK
+            if(pageParam) {
+                enterOfflineMode();
+            }
+
+            if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
+
+            peer = new Peer();
+            peer.on('open', () => {
+                const conn = peer.connect(hostId, { reliable: true });
+                hostConnection = conn;
+
+                conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
+                
+                peer.on('error', (err) => {
+                   if(err.type === 'peer-unavailable') {
+                       showNotification('Ведучого з таким ID не знайдено', true);
+                       setTimeout(() => location.reload(), 3000);
+                   }
+                });
+
+                conn.on('data', async data => {
+                    // --- MESH-LIKE SYNC HANDLER ---
+                    if (data.type === 'HEARTBEAT') {
+                        // 1. Reply I am here
+                        conn.send({ type: 'PONG' });
+                        
+                        // 2. Auto-Fix Slide if drifted
+                        // If we are fully set up AND page differs from Host's page
+                        if(pdfDoc && !pageRendering && pageNum !== data.page) {
+                            console.log("Auto-Sync correcting page drift...");
+                            pageNum = data.page;
+                            clearDrawings(false); 
+                            queueRenderPage(pageNum);
+                            // Also ask for drawings since we moved
+                            conn.send({ type: 'RESYNC_REQ' });
+                        }
+                        return;
+                    }
+
+                    if (data.type === 'INIT') {
+                        document.getElementById('loading-msg').innerText = "Завантаження презентації...";
+                        const ok = await renderPdf(data.url);
+                        if(ok) finishSetup();
+                    }
+                    
+                    if (data.type === 'PAGE') {
+                        pageNum = data.value;
+                        clearDrawings(false); if(pdfDoc) queueRenderPage(pageNum);
+                    }
+                    if (data.type === 'DRAW') receiveDraw(data.coords[0], data.coords[1], data.coords[2], data.coords[3]);
+                    if (data.type === 'CLEAR') clearDrawings(true);
+                });
+
+                function finishSetup() {
+                    conn.send({ type: 'ACK_READY' });
+                    
+                    // EXIT OFFLINE MODE
+                    exitOfflineMode();
+                    
+                    document.getElementById('ui-layer').classList.add('hidden');
+                    
+                    // Clean URL for sharing
+                    const cleanHost = hostId.replace(APP_PREFIX, '');
+                    const currentUrl = window.location.href.split('?')[0] + '?host=' + cleanHost;
+                    
+                    document.getElementById('qr-modal-id').innerText = formatId(cleanHost);
+                    
+                    document.getElementById("qrcode-modal-tgt").innerHTML = "";
+                    new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
+                }
+                
+                conn.on('close', () => { /* Handle disconnect */ });
+            });
+        }
+    </script>
+</body>
+</html>
