@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport-fit=cover ensures we handle notches/safe-areas correctly -->
+    <!-- Viewport settings for perfect mobile sizing -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Синхро PDF</title>
     
@@ -21,19 +21,19 @@
     <style>
         :root {
             /* Functional Color Palette */
-            --color-bg: #222222; /* Darker background for presentation contrast */
+            --color-bg: #222222;
             --color-card: #ffffff;
             
             /* ATTENTION COLORS */
-            --color-attention-high: #b80000; 
-            --color-attention-med: #0b5394;  
-            --color-hand: #f59e0b; 
+            --color-attention-high: #b80000;
+            --color-attention-med: #0b5394;
+            --color-hand: #f59e0b;
             
             --color-text: #000000;
             --color-border: #cccccc;
             --shadow: 0 4px 20px rgba(0,0,0,0.15);
 
-            /* ROTATION VARIABLE (Set via JS) */
+            /* ROTATION VARIABLE */
             --landscape-rotation: 0deg; 
             
             --toolbar-size: 75px;
@@ -48,17 +48,102 @@
             font-family: 'Montserrat', sans-serif;
             font-size: 16px;
             
-            /* --- STRICT LAYOUT ENGINE --- */
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            height: 100dvh; /* Dynamic Height for Mobile Address Bars */
-            width: 100vw;
+            /* --- LAYOUT ENGINE --- */
+            position: fixed; 
+            top: 0; left: 0; right: 0; bottom: 0;
+            
+            /* Use dvh for mobile browsers to ignore address bar in calculations */
+            height: 100%;
+            height: 100dvh;
+            width: 100%;
+            
             overflow: hidden; 
             
+            /* Main Flex Layout */
             display: flex; 
-            flex-direction: column; /* Default: Portrait (Top PDF, Bottom Toolbar) */
+            flex-direction: column; /* Default: Portrait (Stack Vertical) */
         }
 
-        /* --- UI OVERLAYS (Z-Index 200+) --- */
+        /* --- PDF VIEWER (FLEX CHILD 1) --- */
+        #pdf-container {
+            /* KEY FIX: flex: 1 takes remaining space, but min-width/height: 0 
+               forces it to shrink if content is too big, preventing overlap */
+            flex: 1 1 auto; 
+            min-width: 0;
+            min-height: 0;
+            
+            position: relative;
+            background: #222; 
+            width: 100%;
+            height: 100%;
+            
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            z-index: 1; /* Below UI layer but above base */
+        }
+
+        /* --- TOOLBAR (FLEX CHILD 2) --- */
+        #toolbar {
+            /* KEY FIX: Rigid sizing. Never grow, never shrink beyond set size */
+            flex: 0 0 auto;
+            
+            /* Portrait Default */
+            width: 100%; 
+            height: auto; 
+            min-height: var(--toolbar-size);
+            
+            padding-bottom: env(safe-area-inset-bottom); /* Handle iPhone Home Bar */
+            
+            background-color: var(--color-attention-med);
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.2); 
+            z-index: 20; /* Always above PDF */
+        }
+
+        /* --- LANDSCAPE LAYOUT SWITCH --- */
+        @media (orientation: landscape) {
+            body {
+                flex-direction: row; /* Switch to Side-by-Side */
+            }
+            
+            #toolbar {
+                /* Sidebar Mode */
+                width: var(--toolbar-size); 
+                height: 100%; /* Fill vertical */
+                min-height: 0;
+                
+                flex-direction: column; /* Stack icons vertically */
+                box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+                
+                /* Reset paddings for side mode */
+                padding-bottom: 0;
+                padding-left: env(safe-area-inset-left); /* Safe area if notch is on left */
+            }
+            
+            #page-info {
+                transform: rotate(var(--landscape-rotation)); 
+                margin: 5px 0;
+            }
+            .tool-btn {
+                width: 100%; 
+                height: auto;
+                min-height: 50px;
+            }
+        }
+
+        /* --- REST OF UI STYLES --- */
+
+        /* Fullscreen Mode Overrides */
+        body.fullscreen-mode #toolbar { display: none !important; }
+        body.fullscreen-mode #pdf-container { width: 100%; height: 100%; background: black; }
+        body.fullscreen-mode #fs-controls { display: block !important; }
+
+        /* UI Layer (Modals/Menus) */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(244, 244, 244, 1); z-index: 200;
@@ -73,7 +158,8 @@
             border-radius: 1.2rem;
             text-align: center; 
             width: 100%; max-width: 450px;
-            max-height: 90%; overflow-y: auto; 
+            max-height: 90%; 
+            overflow-y: auto; 
             box-shadow: var(--shadow);
             border: 2px solid var(--color-border);
             display: flex; flex-direction: column; gap: 1rem;
@@ -84,100 +170,155 @@
         h3 { margin: 0; color: var(--color-text); font-weight: 700; font-size: 1.4rem; }
         p { margin: 0; font-size: 1rem; color: var(--color-text); line-height: 1.4; }
         
-        /* --- ROLE BUTTONS --- */
+        /* Role Buttons */
         #role-menu {
             display: flex; flex-direction: column; gap: 15px;
-            width: 100%; max-width: 500px; height: 100%; 
-            padding: 10px 0; justify-content: center;
+            width: 100%; max-width: 500px;
+            height: 100%; 
+            padding: 10px 0;
+            justify-content: center;
         }
 
         .role-btn {
-            flex: 1; max-height: 45vh; 
+            flex: 1; 
+            max-height: 45vh; 
             border: none; border-radius: 1.2rem;
             font-family: 'Montserrat', sans-serif;
             font-size: clamp(1.5rem, 5vw, 2.2rem); 
-            font-weight: 800; color: white; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 15px; box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-            transition: transform 0.1s; text-transform: uppercase;
+            font-weight: 800;
+            color: white; cursor: pointer;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 15px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+            text-transform: uppercase;
         }
+
         .role-btn:active { transform: scale(0.97); }
         .role-listener { background-color: var(--color-attention-high); border: 2px solid var(--color-attention-high); }
         .role-speaker { background-color: var(--color-attention-med); border: 2px solid var(--color-attention-med); }
         
-        /* --- BUTTONS & INPUTS --- */
+        /* Buttons & Inputs */
         button.btn-primary {
-            background: var(--color-attention-high); color: white; border: none;
-            padding: 1rem; font-size: 1.1rem; font-family: 'Montserrat', sans-serif;
-            font-weight: 700; border-radius: 0.8rem; cursor: pointer; width: 100%;
+            background: var(--color-attention-high); 
+            color: white; border: none;
+            padding: 1rem; 
+            font-size: 1.1rem; 
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
             display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3); text-transform: uppercase; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(184, 0, 0, 0.3);
+            text-transform: uppercase;
+            flex-shrink: 0;
         }
         button.btn-primary:active { transform: scale(0.98); }
         button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
         button.btn-secondary { 
-            background: white; color: var(--color-attention-med); 
-            border: 2px solid var(--color-attention-med); padding: 0.8rem;
-            font-size: 1rem; font-weight: 600; border-radius: 0.8rem;
-            cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
-            font-family: 'Montserrat', sans-serif; flex-shrink: 0;
+            background: white; 
+            color: var(--color-attention-med); 
+            border: 2px solid var(--color-attention-med); 
+            padding: 0.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.8rem;
+            cursor: pointer; width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: 'Montserrat', sans-serif;
+            flex-shrink: 0;
         }
         button.btn-secondary:active { background: #f0f8ff; }
 
         input[type="text"] {
-            padding: 1rem; width: 100%; background: #fff; 
-            border: 2px solid var(--color-attention-med); color: var(--color-attention-med); 
-            border-radius: 0.8rem; outline: none; font-size: 1.5rem; text-align: center;
-            font-family: 'Montserrat', sans-serif; font-weight: 800; letter-spacing: 2px; flex-shrink: 0;
+            padding: 1rem; width: 100%;
+            background: #fff; 
+            border: 2px solid var(--color-attention-med);
+            color: var(--color-attention-med); 
+            border-radius: 0.8rem; 
+            outline: none;
+            font-size: 1.5rem; text-align: center;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            letter-spacing: 2px;
+            flex-shrink: 0;
         }
-        input.url-input { font-size: 1rem; font-weight: 500; letter-spacing: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+        
+        input.url-input {
+            font-size: 1rem; font-weight: 500; letter-spacing: 0; text-align: left; overflow: hidden; text-overflow: ellipsis;
+        }
         input[type="text"]::placeholder { color: #88a; font-weight: 400; font-size: 1.1rem; letter-spacing: 0; }
         input[type="file"] { display: none; }
 
-        /* --- QR SCANNER --- */
-        #reader { width: 100%; border-radius: 1rem; overflow: hidden; background: #000; border: 3px solid var(--color-attention-med); flex-shrink: 0; min-height: 200px; }
+        /* QR Scanner */
+        #reader {
+            width: 100%;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid var(--color-attention-med);
+            flex-shrink: 0; 
+            min-height: 200px;
+        }
         #reader video { object-fit: cover; border-radius: 1rem; }
-        #reader button { background-color: var(--color-attention-high) !important; color: white !important; border: none !important; padding: 1rem !important; border-radius: 0.5rem !important; font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; margin-top: 10px !important; width: 100% !important; }
+        #reader button {
+            background-color: var(--color-attention-high) !important;
+            color: white !important;
+            border: none !important;
+            padding: 1rem !important;
+            border-radius: 0.5rem !important;
+            font-family: 'Montserrat', sans-serif !important;
+            font-weight: 600 !important;
+            margin-top: 10px !important;
+            width: 100% !important;
+        }
         #html5-qrcode-button-camera-stop, #html5-qrcode-anchor-scan-type-change, #reader__dashboard_section_csr span { display: none !important; }
 
-        /* --- PDF VIEWER (EMPTY SPACE) --- */
-        #pdf-container {
-            /* This is the "Empty Space" logic */
-            flex: 1; /* Grow to fill all available space */
-            width: 100%; height: 100%;
-            overflow: hidden; /* Strict clipping */
-            
-            position: relative;
-            background: #222; 
-            
-            /* Center the PDF inside the empty space */
-            display: flex; 
-            justify-content: center; 
-            align-items: center;
-        }
-
-        /* Fullscreen Mode Overrides */
-        body.fullscreen-mode #toolbar { display: none !important; }
-        body.fullscreen-mode #pdf-container { width: 100%; height: 100%; background: black; }
-        body.fullscreen-mode #fs-controls { display: block !important; }
-
+        /* Canvas & Overlays */
         .canvas-wrapper {
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             background: white;
-            /* Wrapper dimensions are set strictly by JS to fit */
+            /* Max dimensions prevent canvas from forcing container growth */
+            max-width: 100%;
+            max-height: 100%;
         }
         
         canvas#the-canvas { display: block; }
-        canvas#draw-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; pointer-events: none; }
+        canvas#draw-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            touch-action: none; cursor: crosshair;
+            pointer-events: none; 
+        }
 
-        /* HAND OVERLAY */
-        #hand-overlay { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.95); border: 2px solid var(--color-hand); border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 50; font-weight: 700; color: #000; }
+        #hand-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--color-hand);
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 50;
+            font-weight: 700; color: #000;
+        }
         
-        /* OFFLINE INDICATOR */
-        #offline-indicator { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(100, 100, 100, 0.9); color: white; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 250; font-weight: 600; font-size: 0.9rem; }
+        #offline-indicator {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(100, 100, 100, 0.9);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 250; 
+            font-weight: 600; font-size: 0.9rem;
+        }
         
+        /* Animations */
         .bounce { animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
         .spin { animation: spin 1s linear infinite; }
@@ -187,85 +328,142 @@
         #zone-prev { left: 0; }
         #zone-next { right: 0; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 300; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
-        .modal-content { background: white; padding: 1.5rem; border-radius: 1.5rem; box-shadow: var(--shadow); border: 2px solid var(--color-attention-med); display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 90%; }
-
-        /* --- TOOLBAR (MAIN ELEMENT) --- */
-        #toolbar {
-            /* Mobile/Portrait Default: Bottom Stick */
-            width: 100%; 
-            height: auto; min-height: var(--toolbar-size);
-            
-            /* KEY: Do not shrink, stay fixed size */
-            flex: 0 0 auto; 
-            
-            /* Safe Area for iPhone X+ */
-            padding-bottom: env(safe-area-inset-bottom);
-            
-            background-color: var(--color-attention-med);
-            display: flex; justify-content: center; align-items: center;
-            gap: 2px; box-shadow: 0 -4px 15px rgba(0,0,0,0.2); 
-            z-index: 20; position: relative; 
+        /* Modal Base */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98); z-index: 300;
+            justify-content: center; align-items: center; flex-direction: column;
+            padding: 20px;
+        }
+        .modal-content { 
+            background: white; padding: 1.5rem; border-radius: 1.5rem; 
+            box-shadow: var(--shadow); border: 2px solid var(--color-attention-med);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            max-width: 90%;
         }
 
-        /* --- LANDSCAPE MODE (SIDEBAR) --- */
-        @media (orientation: landscape) {
-            body {
-                flex-direction: row; /* Horizontal Layout */
-            }
-            #toolbar {
-                /* Sidebar Stick */
-                width: var(--toolbar-size); 
-                height: 100%;
-                
-                flex: 0 0 var(--toolbar-size); /* Fixed width */
-                
-                flex-direction: column; /* Stack buttons */
-                box-shadow: -4px 0 15px rgba(0,0,0,0.2);
-                padding-bottom: 0; /* Reset bottom padding */
-                padding-right: env(safe-area-inset-right); /* Notch safety if needed */
-            }
-            #page-info { transform: rotate(var(--landscape-rotation)); margin: 5px 0; }
-            .tool-btn { width: 100%; height: auto; min-height: 50px; }
+        /* Toolbar Content */
+        #page-info { 
+            color: white; font-size: 1rem; font-weight: 600; 
+            min-width: 45px; text-align: center; 
+            white-space: nowrap; margin: 0 2px;
+            transition: transform 0.3s ease;
+            transform: rotate(var(--landscape-rotation));
         }
 
-        #page-info { color: white; font-size: 1rem; font-weight: 600; min-width: 45px; text-align: center; white-space: nowrap; margin: 0 2px; transition: transform 0.3s ease; transform: rotate(var(--landscape-rotation)); }
-        
-        .tool-btn { background: none; border: none; color: white; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 1; min-width: 44px; height: 100%; position: relative; }
+        .tool-btn {
+            background: none; border: none; color: white; cursor: pointer;
+            padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 1;
+            /* Default Portrait Width */
+            min-width: 44px;
+            height: 100%; 
+            position: relative; 
+        }
         .tool-btn:active .btn-inner { background-color: rgba(255,255,255,0.2); border-radius: 8px; }
-        
-        .btn-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; transition: transform 0.3s ease; width: 100%; height: 100%; position: relative; transform: rotate(var(--landscape-rotation)); }
+
+        .btn-inner {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 4px;
+            transition: transform 0.3s ease;
+            width: 100%; height: 100%;
+            position: relative; 
+            transform: rotate(var(--landscape-rotation));
+        }
+
         .btn-inner span { font-size: 0.65rem; margin-top: 3px; font-weight: 500; white-space: nowrap; }
         .tool-btn.danger { color: #ffcccc; } 
+        
         .hand-active .btn-inner { color: var(--color-hand) !important; background: rgba(255,255,255,0.1); border-radius: 8px; }
         .hand-active i { fill: var(--color-hand); }
 
-        /* --- VISUAL TIMER LOADER --- */
-        .hand-timer-svg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-90deg); width: 36px; height: 36px; pointer-events: none; display: none; z-index: 0; transition: top 0.2s; }
+        /* Timer SVG */
+        .hand-timer-svg {
+            position: absolute;
+            top: 40%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            width: 36px; height: 36px;
+            pointer-events: none;
+            display: none; 
+            z-index: 0;
+            transition: top 0.2s; 
+        }
+
         #fs-hand .hand-timer-svg { top: 50%; width: 60px; height: 60px; }
         .hand-active .hand-timer-svg, .fs-btn-active .hand-timer-svg { display: block; }
+
         #btn-hand.hand-active span { display: none; }
         #btn-hand.hand-active .hand-timer-svg { top: 50%; }
-        .hand-timer-path { fill: none; stroke: var(--color-hand); stroke-width: 3; stroke-dasharray: 100, 100; stroke-dashoffset: 0; }
+
+        .hand-timer-path {
+            fill: none; stroke: var(--color-hand); stroke-width: 3; stroke-dasharray: 100, 100; stroke-dashoffset: 0;
+        }
+
         .hand-active .hand-timer-path, .fs-btn-active .hand-timer-path { animation: timeCircle 10s linear forwards; }
         @keyframes timeCircle { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 100; } }
 
-        /* --- FULL SCREEN CONTROLS --- */
-        #fs-controls { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 150; }
+        /* Full Screen Controls */
+        #fs-controls {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 150;
+        }
+        
         #fs-exit, #fs-hand, #fs-page-info { pointer-events: auto; transition: transform 0.3s ease; }
-        #fs-exit { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; transform: rotate(var(--landscape-rotation)); }
-        #fs-page-info { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.6); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; transform: rotate(var(--landscape-rotation)); origin: center; }
-        #fs-hand { position: absolute; bottom: 30px; right: 20px; background: white; color: #aaa; border: 2px solid #ccc; border-radius: 50%; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transform: rotate(var(--landscape-rotation)); position: absolute; }
+
+        #fs-exit {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            border: none; border-radius: 50%; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transform: rotate(var(--landscape-rotation));
+        }
+        
+        #fs-page-info {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 0.9rem;
+            transform: rotate(var(--landscape-rotation)); origin: center;
+        }
+
+        #fs-hand {
+            position: absolute; bottom: 30px; right: 20px;
+            background: white; color: #aaa;
+            border: 2px solid #ccc;
+            border-radius: 50%; width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transform: rotate(var(--landscape-rotation));
+            position: absolute; 
+        }
         #fs-hand:active { transform: scale(0.95); }
         .fs-btn-active { background-color: var(--color-hand) !important; color: white !important; border: none !important; }
 
-        .file-label { font-size: 0.9rem; color: var(--color-attention-med); word-break: break-all; font-weight: 600; padding: 10px; border: 2px dashed var(--color-attention-med); border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05); }
-        #client-list { text-align: left; max-height: 150px; overflow-y: auto; background: #f9f9f9; border: 1px solid #eee; border-radius: 0.8rem; padding: 0.5rem; margin: 0; width: 100%; flex-grow: 1; }
+        /* Helpers */
+        .file-label {
+            font-size: 0.9rem; color: var(--color-attention-med); 
+            word-break: break-all; font-weight: 600;
+            padding: 10px; border: 2px dashed var(--color-attention-med);
+            border-radius: 0.8rem; background: rgba(11, 83, 148, 0.05);
+        }
+        
+        #client-list {
+            text-align: left; max-height: 150px; overflow-y: auto;
+            background: #f9f9f9; border: 1px solid #eee;
+            border-radius: 0.8rem; padding: 0.5rem; margin: 0;
+            width: 100%; flex-grow: 1; 
+        }
         .client-row { display: flex; justify-content: space-between; padding: 0.8rem; border-bottom: 1px solid #eee; font-size: 0.9rem; font-weight: 600; }
         .status-ready { color: var(--color-attention-high); font-weight: 700; }
         .status-wait { color: var(--color-attention-med); }
 
-        .id-display { font-size: 2.2rem; font-weight: 800; color: var(--color-attention-med); background: #f0f8ff; padding: 10px; border-radius: 10px; border: 2px dashed var(--color-attention-med); letter-spacing: 2px; margin-top: 10px; user-select: text; }
+        .id-display {
+            font-size: 2.2rem; font-weight: 800; color: var(--color-attention-med);
+            background: #f0f8ff; padding: 10px; border-radius: 10px;
+            border: 2px dashed var(--color-attention-med);
+            letter-spacing: 2px; margin-top: 10px; user-select: text;
+        }
         .id-label { font-size: 0.8rem; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: -5px; }
 
     </style>
@@ -275,6 +473,7 @@
     <!-- 1. UI LAYER -->
     <div id="ui-layer">
         
+        <!-- STEP 1: ROLE SELECTION -->
         <div id="role-menu">
             <button class="role-btn role-listener" onclick="setupListener()">
                 <div class="btn-inner">
@@ -290,6 +489,7 @@
             </button>
         </div>
 
+        <!-- STEP 2A: LISTENER SETUP -->
         <div id="listener-menu" class="card hidden">
             <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
@@ -304,6 +504,7 @@
             </button>
         </div>
 
+        <!-- STEP 2B: SPEAKER SETUP -->
         <div id="speaker-menu" class="card hidden">
             <button class="btn-secondary" onclick="location.reload()" style="width: auto; align-self: flex-start;">
                 <i data-lucide="arrow-left"></i> Назад
@@ -330,6 +531,7 @@
             </div>
         </div>
 
+        <!-- LOADING SCREEN -->
         <div id="loading-menu" class="card hidden" style="justify-content: center; border-color: var(--color-attention-med);">
             <i data-lucide="loader-2" class="spin" style="animation: spin 1s linear infinite; color: var(--color-attention-med); width:64px; height:64px;"></i>
             <h3 id="loading-msg">З'єднання...</h3>
@@ -386,7 +588,7 @@
         </button>
     </div>
 
-    <!-- PDF CONTAINER: "The rest is empty space" -->
+    <!-- PDF Container (Fills remaining space) -->
     <div id="pdf-container">
         <div id="hand-overlay" class="hidden bounce">
             <i data-lucide="hand" width="24" height="24" fill="#f59e0b" stroke="none"></i>
@@ -399,7 +601,7 @@
         </div>
     </div>
 
-    <!-- TOOLBAR: "Main element, sticked" -->
+    <!-- Toolbar (Fixed Size) -->
     <div id="toolbar">
         <button class="tool-btn" onclick="toggleQR()">
             <div class="btn-inner">
@@ -464,9 +666,9 @@
     </div>
 
     <script>
-        // --- CONFIG & GLOBALS ---
         const LANDSCAPE_ROTATION_DEG = 0; 
-        const APP_PREFIX = "synchro_pdf_";
+        const APP_PREFIX = "synchro_pdf_"; 
+        
         const DEFAULT_PDF_URL = 'https://gitknu.github.io/webrtc_test/slides.pdf';
         
         let pdfDoc = null, pageNum = 1, pageRendering = false, pageNumPending = null;
@@ -479,16 +681,16 @@
         const container = document.getElementById('pdf-container');
         
         let peer = null;
-        let connections = [];
+        let connections = []; 
         let isLeader = false;
         let transferInProgress = false;
-        let activeSourceUrl = null;
-        let myIdRaw = null;
-        let currentHostId = null;
+        let activeSourceUrl = null; 
+        let myIdRaw = null; 
+        let currentHostId = null; 
         
         let myHandRaised = false;
         let hostConnection = null;
-        let handTimeout = null;
+        let handTimeout = null; 
         
         let isDrawing = false;
         let lastX = 0, lastY = 0;
@@ -499,7 +701,6 @@
         lucide.createIcons();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // --- INPUT MASKING ---
         document.getElementById('join-input').addEventListener('input', function (e) {
             let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})/);
             e.target.value = !x[2] ? x[1] : x[1] + ' ' + x[2] + (x[3] ? ' ' + x[3] : '');
@@ -530,7 +731,7 @@
                 hostConnection.send({ type: 'RESYNC_REQ' });
                 setTimeout(() => { if(btnIcon) btnIcon.classList.remove('spin'); }, 1000);
             } else {
-                 if(confirm("З'єднання втрачено. Перезавантажити сторінку?")) { window.location.reload(); }
+                 if(confirm("З'єднання втрачено. Перезавантажити сторінку?")) window.location.reload();
             }
         }
 
@@ -539,6 +740,7 @@
             const title = document.getElementById('notif-title');
             const body = document.getElementById('notif-body');
             const icon = modal.querySelector('i');
+
             if (isError) {
                 title.innerText = "Помилка";
                 icon.setAttribute('data-lucide', 'alert-circle');
@@ -557,7 +759,9 @@
             modal.style.display = 'flex';
         }
 
-        function closeNotification() { document.getElementById('notification-modal').style.display = 'none'; }
+        function closeNotification() {
+            document.getElementById('notification-modal').style.display = 'none';
+        }
 
         function enterFullScreen() {
             document.body.classList.add('fullscreen-mode');
@@ -586,6 +790,7 @@
         function updateToolbarForRole() {
             const spkBtns = document.querySelectorAll('.spk-only');
             const lstBtns = document.querySelectorAll('.lst-only');
+            
             if (isLeader) {
                 spkBtns.forEach(el => el.classList.remove('hidden'));
                 lstBtns.forEach(el => el.classList.add('hidden'));
@@ -604,6 +809,7 @@
             document.getElementById('listener-menu').classList.remove('hidden');
             isLeader = false;
             updateToolbarForRole();
+
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
@@ -662,28 +868,20 @@
             return url;
         }
 
-        // --- PDF SCALING LOGIC (STRICT CONTAIN) ---
         function getOptimalScale(page) {
-            // Measure the "Empty Space"
-            const availableWidth = container.clientWidth;
-            const availableHeight = container.clientHeight;
-            
+            const availableWidth = container.clientWidth - 10;
+            const availableHeight = container.clientHeight - 10;
             const viewport = page.getViewport({ scale: 1, rotation: rotation });
-            
-            // Calculate scale to touch the borders but NOT overflow
             const scaleX = availableWidth / viewport.width;
             const scaleY = availableHeight / viewport.height;
-            
-            // Math.min ensures "Contain" (Best Fit)
             return Math.min(scaleX, scaleY) * (window.devicePixelRatio || 1);
         }
 
         async function renderPdf(source) {
             if (typeof source === 'string' && (source.includes('.ppt') || source.includes('.pptx')) && !source.includes('google.com')) {
-                showNotification("Браузер не відображає PPT/PPTX напряму. Використовуйте Google Slides.", true);
+                showNotification("Браузер не відображає PPT/PPTX напряму. Будь ласка, використовуйте посилання на Google Slides або експортуйте файл у PDF.", true);
                 return false;
             }
-
             try {
                 const loadingTask = pdfjsLib.getDocument({
                     url: source,
@@ -698,7 +896,7 @@
                 return true;
             } catch (e) {
                 console.error("PDF Load Failed:", e);
-                showNotification("Не вдалося завантажити файл.", true);
+                showNotification("Не вдалося завантажити файл. Перевірте посилання або права доступу (CORS). Для Google Drive переконайтеся, що файл доступний 'Для всіх, хто має посилання'.", true);
                 return false;
             }
         }
@@ -771,9 +969,9 @@
                     myHandRaised = false;
                     document.getElementById('btn-hand').classList.remove('hand-active');
                     document.getElementById('fs-hand').classList.remove('fs-btn-active');
-                    if (hostConnection) { hostConnection.send({ type: 'HAND', value: false }); }
+                    if (hostConnection) hostConnection.send({ type: 'HAND', value: false });
                     handTimeout = null;
-                }, 10000);
+                }, 10000); 
             }
         }
 
@@ -782,6 +980,7 @@
             const count = connections.filter(c => c.handRaised).length;
             const overlay = document.getElementById('hand-overlay');
             const counter = document.getElementById('hand-count');
+            
             counter.innerText = count;
             if (count > 0) overlay.classList.remove('hidden');
             else overlay.classList.add('hidden');
@@ -941,8 +1140,6 @@
             }, 200);
         });
 
-        // --- PEER JS LOGIC ---
-
         function generateShortId() {
             const min = 100000000;
             const max = 999999999;
@@ -957,6 +1154,7 @@
 
             myIdRaw = generateShortId();
             const peerJsId = APP_PREFIX + myIdRaw;
+
             peer = new Peer(peerJsId);
 
             peer.on('open', id => {
@@ -976,11 +1174,11 @@
             setInterval(() => {
                 if(!isLeader) return;
                 connections.forEach(c => {
-                    if(c.conn.open) { c.conn.send({ type: 'HEARTBEAT', page: pageNum }); }
+                    if(c.conn.open) c.conn.send({ type: 'HEARTBEAT', page: pageNum });
                 });
                 const now = Date.now();
                 const beforeCount = connections.length;
-                connections = connections.filter(c => { return (now - c.lastPong) < 10000; });
+                connections = connections.filter(c => (now - c.lastPong) < 10000);
                 if(connections.length !== beforeCount) {
                     updateClientList();
                     updateHandOverlay();
@@ -993,7 +1191,9 @@
                 connections.push(client);
                 updateClientList();
 
-                conn.on('open', () => { if (transferInProgress) { syncSingleClient(client); } });
+                conn.on('open', () => {
+                    if (transferInProgress) syncSingleClient(client);
+                });
 
                 conn.on('data', data => {
                     client.lastPong = Date.now();
@@ -1004,7 +1204,7 @@
                         if(transferInProgress) {
                             conn.send({ type: 'PAGE', value: pageNum });
                             if(pageMarks[pageNum]) {
-                                pageMarks[pageNum].forEach(line => { conn.send({ type: 'DRAW', coords: line }); });
+                                pageMarks[pageNum].forEach(line => conn.send({ type: 'DRAW', coords: line })); 
                             }
                         }
                     }
@@ -1015,7 +1215,7 @@
                     if (data.type === 'RESYNC_REQ') {
                         conn.send({ type: 'PAGE', value: pageNum });
                         if(pageMarks[pageNum]) {
-                            pageMarks[pageNum].forEach(line => { conn.send({ type: 'DRAW', coords: line }); });
+                            pageMarks[pageNum].forEach(line => conn.send({ type: 'DRAW', coords: line }));
                         }
                     }
                 });
@@ -1074,11 +1274,11 @@
         function joinGame(id, pageParam) {
             let hostId = id || document.getElementById('join-input').value;
             hostId = hostId.replace(/\s/g, '');
-            if (!hostId) return showNotification("Потрібен ID або QR код", true);
+            if (!hostId) return showNotification("Потрібен ID або QR код для підключення", true);
             
-            if (!hostId.startsWith(APP_PREFIX)) { hostId = APP_PREFIX + hostId; }
+            if (!hostId.startsWith(APP_PREFIX)) hostId = APP_PREFIX + hostId;
+
             currentHostId = hostId.replace(APP_PREFIX, ''); 
-            
             const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?host=' + currentHostId;
             window.history.replaceState({path: newUrl}, '', newUrl);
 
@@ -1089,18 +1289,19 @@
             isLeader = false;
             updateToolbarForRole();
 
-            if(pageParam) { enterOfflineMode(); }
+            if(pageParam) enterOfflineMode();
             if(html5QrcodeScanner) try { html5QrcodeScanner.clear(); } catch(e){}
 
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(hostId, { reliable: true });
                 hostConnection = conn;
+
                 conn.on('open', () => document.getElementById('loading-msg').innerText = "Пошук ведучого...");
                 
                 peer.on('error', (err) => {
                    if(err.type === 'peer-unavailable') {
-                       showNotification('Ведучого не знайдено', true);
+                       showNotification('Ведучого з таким ID не знайдено', true);
                        setTimeout(() => location.reload(), 3000);
                    }
                 });
@@ -1117,7 +1318,7 @@
                         return;
                     }
                     if (data.type === 'INIT') {
-                        document.getElementById('loading-msg').innerText = "Завантаження...";
+                        document.getElementById('loading-msg').innerText = "Завантаження презентації...";
                         const ok = await renderPdf(data.url);
                         if(ok) finishSetup();
                     }
@@ -1133,12 +1334,16 @@
                     conn.send({ type: 'ACK_READY' });
                     exitOfflineMode();
                     document.getElementById('ui-layer').classList.add('hidden');
+                    
                     const cleanHost = hostId.replace(APP_PREFIX, '');
                     const currentUrl = window.location.href.split('?')[0] + '?host=' + cleanHost;
+                    
                     document.getElementById('qr-modal-id').innerText = formatId(cleanHost);
                     document.getElementById("qrcode-modal-tgt").innerHTML = "";
                     new QRCode(document.getElementById("qrcode-modal-tgt"), { text: currentUrl, width: 250, height: 250, colorDark: "#000000" });
                 }
+                
+                conn.on('close', () => { });
             });
         }
     </script>
